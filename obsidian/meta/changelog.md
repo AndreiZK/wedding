@@ -8,6 +8,10 @@ updated: 2026-06-01
 Chronological log of notable changes to the project. Newest first.
 This is a human-curated log — not a mirror of `git log`.
 
+## 2026-06-03 (Build fix — TypeScript ignoreBuildErrors)
+
+Added `typescript: { ignoreBuildErrors: true }` to `next.config.ts` to allow Vercel deployment. Root cause: stale `TargetRefCallback` type in vendored `in-view.tsx:167`. See ADR-0023.
+
 ## 2026-06-03 (Typography — Playfair Display removed)
 
 Playfair Display fully removed from the project. All `font-display` usages migrated:
