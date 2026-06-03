@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Onest } from "next/font/google";
+import { Caveat, Onest, Unbounded } from "next/font/google";
 
 import {
   generateMetadata,
@@ -9,14 +9,31 @@ import { getSiteStructuredData } from "@/utils/seo/structured-data";
 
 import { LazyCookie } from "@/components/common/Cookie";
 import { AdaptiveGrid } from "@/components/common/grid";
+import { SiteLogo } from "@/components/common/logo";
+import { Preloader } from "@/components/common/preloader";
 import { ReducedMotion } from "@/components/common/reduced-motion";
 import { ScrollLayout } from "@/layouts/scroll-layout";
+import { heroMock } from "@/data/mocks/hero";
 
 import "@/app/globals.css";
 
 const onest = Onest({
   variable: "--font-onest",
-  subsets: ["latin"],
+  subsets: ["latin", "cyrillic"],
+  display: "swap",
+});
+
+const unbounded = Unbounded({
+  variable: "--font-unbounded",
+  subsets: ["latin", "cyrillic"],
+  weight: ["400", "600", "800"],
+  display: "swap",
+});
+
+const caveat = Caveat({
+  variable: "--font-caveat",
+  subsets: ["latin", "cyrillic"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -29,8 +46,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${onest.variable}`}>
+    <html lang="ru">
+      <body
+        className={`${onest.variable} ${unbounded.variable} ${caveat.variable}`}
+      >
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -41,8 +60,10 @@ export default function RootLayout({
           <AdaptiveGrid />
           <ReducedMotion />
           <LazyCookie />
+          <SiteLogo />
           {children}
         </ScrollLayout>
+        <Preloader image={heroMock.image.src} />
       </body>
     </html>
   );

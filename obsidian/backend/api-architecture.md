@@ -74,6 +74,14 @@ auth helpers). Don't pre-build a service layer.
 Secret vars are **unprefixed** (`CONTACT_ENDPOINT`) — `NEXT_PUBLIC_` only for
 values safe in the browser. See [[environment-variables]].
 
+> [!note] Sanctioned exception — `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+> The Google Maps **JavaScript API** loads its SDK via a `<script>` from Google
+> with the key in the URL; it can't be proxied through `/api/*`, and a Maps JS key
+> is **public by design** (secured by an HTTP-referrer restriction, not secrecy). So
+> it lives in `publicEnv` as the **one** sanctioned client "key" — *not* a secret,
+> and **must** be referrer-restricted in Google Cloud. Do **not** generalise this to
+> real secrets. See [[decisions-log]] ADR-0017 and [[components/common]] `<VenueMap>`.
+
 ## Calling endpoints from the client
 
 Client Components that fetch after mount use `apiFetch` from
@@ -85,6 +93,10 @@ Server Components instead (no client request at all).
 
 `app/api/contact/route.ts` — a contact/lead endpoint. Runs out of the box
 (logs server-side); set `CONTACT_ENDPOINT` to forward leads upstream.
+
+`app/api/preferences/route.ts` — the wedding guest-preferences endpoint (see
+[[components/wedding-sections]]). Same pattern: all-optional zod schema, logs or
+forwards to `CONTACT_ENDPOINT` (tagged `kind: "wedding_preferences"`).
 
 ## Related
 

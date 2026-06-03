@@ -32,5 +32,44 @@
         ]
       }
     ]
+  },
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Bash(yarn run *)",
+      "Bash(yarn install)",
+      "Bash(yarn install *)",
+      "Bash(yarn lint *)",
+      "Bash(yarn build *)",
+      "Bash(yarn dev *)",
+      "Bash(npm run *)",
+      "Bash(npm install)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(npx eslint *)",
+      "Bash(./node_modules/.bin/*)",
+      "Bash(node_modules/.bin/tsc *)",
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(git add *)",
+      "Bash(git mv *)",
+      "Bash(mkdir *)",
+      "Bash(mv *)",
+      "Bash(cp *)",
+      "Bash(lsof *)",
+      "Bash(pkill -f \"next dev\")"
+    ],
+    "ask": [
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(kill *)",
+      "Bash(kill -9 *)"
+    ]
   }
 }

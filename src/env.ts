@@ -13,6 +13,14 @@ import { z } from "zod";
 
 const publicSchema = z.object({
   NEXT_PUBLIC_SITE_URL: z.url().optional(),
+  /**
+   * Google Maps JavaScript API key. Public by design — it ships in the browser and
+   * is secured by an HTTP-referrer restriction (Google Cloud Console), not by
+   * secrecy. This is the one sanctioned `NEXT_PUBLIC_` "key": the Maps JS SDK loads
+   * its script client-side, so it cannot be proxied through `/api/*` like a real
+   * secret. Unset → the venue map falls back to a styled placeholder. See ADR-0017.
+   */
+  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: z.string().optional(),
 });
 
 const serverSchema = z.object({
@@ -23,6 +31,8 @@ const serverSchema = z.object({
 /** Public env — safe to read anywhere (server or client). */
 export const publicEnv = publicSchema.parse({
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+  // Referenced literally so Next can inline it into the client bundle.
+  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
 });
 
 let cachedServerEnv: z.infer<typeof serverSchema> | undefined;

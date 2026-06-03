@@ -34,6 +34,9 @@ components — don't call them directly unless extending the engine.
 |------|------|------|
 | `useWindowWidth` / `useWindowHeight` / `useWindowSize` | `use-window-size.ts` | SSR-safe window dimensions — all three share **one** debounced (300 ms) `resize` listener via a `useSyncExternalStore` store |
 | `useAdaptiveGrid` | `use-adaptive-grid.ts` | Scales the root `<html>` font-size up while the viewport exceeds `baseWidth` — powers `<AdaptiveGrid>`, see [[components/common]] |
+| `useSubmitPreferences` | `use-submit-preferences.ts` | Submits the wedding preferences form to `/api/preferences` via `apiFetch`; exposes `{ status, error, submit }`. Keeps network logic out of the form (see [[components/wedding-sections]], [[api-architecture]]) |
+| `useIntro` | `use-intro.ts` | Zustand store with `done` / `setDone` — the `<Preloader>` flips it when its monogram lands, and the corner `SiteLogo` stays hidden until then so the two logos hand off seamlessly (see [[components/common]]) |
+| `useGoogleMaps` | `use-google-maps.ts` | Loads the Google Maps JS API once (singleton script inject) and reports `"no-key" \| "loading" \| "ready" \| "error"`; keyed on `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`. Powers `<VenueMap>` (see [[components/common]], [[decisions-log]] ADR-0017) |
 
 > [!note] Shared render loop
 > Loop-based hooks (`useLoop`, `useResizeLoop`, `useLoopInView`, the trigger

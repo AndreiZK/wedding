@@ -81,14 +81,39 @@ every case (motion is spring-based, so there are no keyframes to co-locate).
 
 ## Current theme state
 
-The starter ships a **minimal** theme: just `background` / `foreground` and the
-Onest font, with a dark-mode override via `@media (prefers-color-scheme: dark)`.
-The `@layer base/components/utilities` blocks are empty — fill them per project.
+The starter theme has been extended with a **warm-dark editorial wedding
+palette**:
+
+| Token | Value | Purpose |
+|-------|-------|---------|
+| `--w-ink` | `#181310` | Section ground (warm near-black) |
+| `--w-ink-2` | `#221a15` | Layering / overlays |
+| `--w-bone` | `#ece3d4` | Primary text (warm ivory) |
+| `--w-gold` | `#c2a14e` | Accent / monogram (antique gold) |
+| `--w-clay` | `#b3795a` | Secondary accent (terracotta) |
+| `--w-muted` | `#9a8b76` | Secondary text (taupe) |
+
+Base `background` / `foreground` and dark-mode override remain unchanged.
+`@layer base/components/utilities` blocks are empty — fill them per project.
+
+One project `@utility` exists: **`eyebrow`** — the small gold tracked all-caps
+label shared across the wedding sections (a pure-utility combo applied to text
+rendered by animation components, so a `@utility` per ADR-0012, not a component).
+See [[components/wedding-sections]].
 
 ## Typography
 
-Font: **Onest** (`next/font/google`), bound to `--font-onest` → `--font-sans`.
-Loaded in `src/app/layout.tsx` and exposed on `<body>` as `--font-onest`.
+Three fonts loaded in `src/app/layout.tsx`, all via `next/font/google`:
+
+| CSS var | Font | Subsets | Tailwind class | Role |
+|---------|------|---------|---------------|------|
+| `--font-onest` | Onest | latin, cyrillic | `font-sans`, `font-body` | UI, body, wedding names |
+| `--font-unbounded` | Unbounded | latin, cyrillic | `font-punch` | Headings & accents — section h2s, logo letters |
+| `--font-caveat` | Caveat | latin, cyrillic | `font-hand` | Handwritten accents — captions, times, paragraph, closing |
+
+Playfair Display was removed (2026-06-03). `--font-display` CSS variable has been
+dropped; all former `font-display` usages are replaced by `font-punch` (headings)
+or `font-hand` (captions). `html lang="ru"` is set — all fonts carry a `cyrillic` subset.
 
 ## Styling rules
 

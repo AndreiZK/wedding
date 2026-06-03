@@ -1,32 +1,71 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #eef0e3;
+  --foreground: #22342a;
+
+  /* Forest & Brass palette (Version B).
+     Light oat-green ground, deep forest text, brass accent.
+     See REDESIGN-guideline.md for the full token reference. */
+  --w-ink:   #eef0e3;  /* oat-green — main section background */
+  --w-ink-2: #e6e9d8;  /* deeper oat — alternate section wash */
+  --w-bone:  #22342a;  /* deep forest green — primary text */
+  --w-gold:  #b0833f;  /* brass — primary accent, CTAs */
+  --w-clay:  #2f4a39;  /* deep forest — secondary accent */
+  --w-muted: #5f6f5c;  /* soft muted green — secondary text */
+
+  /* Paper grain — SVG feTurbulence texture. No image file needed.
+     mix-blend-mode: multiply is critical — invisible on white, visible on colour. */
+  --grain-url: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-onest);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Wedding colours */
+  --color-w-ink:   var(--w-ink);
+  --color-w-ink-2: var(--w-ink-2);
+  --color-w-bone:  var(--w-bone);
+  --color-w-gold:  var(--w-gold);
+  --color-w-clay:  var(--w-clay);
+  --color-w-muted: var(--w-muted);
+
+  /* Fonts */
+  --font-sans:    var(--font-onest);
+  --font-body:    var(--font-onest);
+  --font-punch:   var(--font-unbounded);   /* hero headline — Unbounded 800 */
+  --font-hand:    var(--font-caveat);      /* handwritten accents — Caveat */
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  width: 100vw;
+  background: var(--w-ink);
+  color: var(--w-bone);
+}
+
+/* Paper grain — fixed overlay across the whole viewport.
+   multiply blend: invisible on white, adds texture on colour. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999;
+  mix-blend-mode: multiply;
+  opacity: 0.4;
+  background-image: var(--grain-url);
+  background-size: 240px 240px;
+}
+
+/* Eyebrow — small brass tracked all-caps label (Onest 600).
+   Applied to text rendered by animation components via @utility (ADR-0012). */
+@utility eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.32em;
+  color: var(--w-gold);
 }
 
 @layer base {

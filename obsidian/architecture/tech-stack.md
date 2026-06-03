@@ -58,6 +58,12 @@ No miscellaneous runtime dependencies. Cookie consent is an in-house component
 (`src/components/common/Cookie/`) built on Zustand + `@react-spring/web` — the
 former `react-cookie-consent` package was removed. See [[components/common]].
 
+## External integrations
+
+| Service | How | Key |
+|---------|-----|-----|
+| **Google Maps JavaScript API** | `<VenueMap>` (location section) loads the SDK via an in-house `useGoogleMaps` loader (no npm package; types hand-rolled in `src/types/google-maps.d.ts`). Themed from the `--w-*` tokens. | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` — public, referrer-restricted (ADR-0017). Unset → styled fallback. |
+
 ## Tooling
 
 | Package | Role |

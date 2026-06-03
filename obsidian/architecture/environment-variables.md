@@ -20,6 +20,7 @@ Rules for handling configuration and secrets.
 | Name | Scope | Purpose |
 |------|-------|---------|
 | `NEXT_PUBLIC_SITE_URL` | public | Site origin (no trailing slash). Drives canonical URLs, OG/Twitter tags, `robots.txt`, `sitemap.xml`, JSON-LD. Falls back to `http://localhost:3000` when unset — **set it in production**. See [[seo-metadata]]. |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | public | Google Maps JS API key for `<VenueMap>` (location section). **Public by design** — restrict by HTTP referrer in Google Cloud, never reuse for secrets. Unset → styled placeholder + "open in Maps" link. See [[api-architecture]], [[decisions-log]] ADR-0017. |
 | `CONTACT_ENDPOINT` | server-only | Optional upstream the `/api/contact` route forwards leads to (CRM / webhook). When unset, submissions are logged server-side. See [[api-architecture]]. |
 
 Documented in `.env.example` (committed). Validated by `src/env.ts` (zod):

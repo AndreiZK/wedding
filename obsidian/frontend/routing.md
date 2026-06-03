@@ -29,6 +29,29 @@ All layout and UI logic lives in `src/views/home.tsx` (`HomeView`). The view is
 a **Server Component**; client-only animation is isolated in a leaf
 (`views/home-showcase.tsx`) — see [[component-conventions]] hard rule #6.
 
+`HomeView` composes the wedding sections (Hero → Date & Location → Schedule →
+Dresscode → Preferences). The post-hero sections are stacked in a **plain
+`relative z-20 -mt-[100vh]` panel** (soft top shadow) pulled up over the hero's tail
+so they **slide out from underneath the hero** — the marquet.nyc-style handoff. The
+parallax is a *constant speed differential*: the hero stage drifts up slowly (its
+own `stageY` transform, 0.5×) while this panel rises at 1×; the `-mt-[100vh]` is
+sized so the panel fully covers the viewport exactly at the hero's pin-end (no
+linear tail). The wrapper deliberately has **no `transform` or `overflow`** — either
+breaks the `position: sticky` calendar pin in Date & Location, so the differential
+lives on the hero stage instead (a `transform` on a sticky element is safe). See
+[[components/wedding-sections]] and [[decisions-log]] ADR-0015.
+
+**Schedule** is a direct sibling of `DateLocationSection` (same level, no extra
+wrapper). The schedule section applies its own `-mt-[100vh]` internally — same
+zero-gap pattern as the location pin inside `DateLocationSection`. The schedule pin
+starts exactly when the location pin ends (no dead scroll between them).
+
+**Dresscode** applies its own `-mt-[100vh]` internally (pin starts when schedule pin
+ends). Dresscode exits via slow 0.5× parallax drift (not a fast whoosh), so
+**Preferences** uses `-mt-[100vh]` — the standard zero-gap parallax handoff (same as
+hero→content, ADR-0015). At dresscode pin-end, preferences fully covers the viewport.
+See [[decisions-log]] ADR-0019, ADR-0020, ADR-0021.
+
 ## Current routes
 
 | Route | File | View |
