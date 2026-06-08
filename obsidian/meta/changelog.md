@@ -1,12 +1,22 @@
 ---
 tags: [meta, changelog]
-updated: 2026-06-08l
+updated: 2026-06-08m
 ---
 
 # Changelog
 
 Chronological log of notable changes to the project. Newest first.
 This is a human-curated log — not a mirror of `git log`.
+
+## 2026-06-08m (Cookie consent removed)
+
+**Scope:** `layout.tsx`, `src/components/common/Cookie/` (deleted), vault docs.
+
+Removed the in-house cookie consent system (banner, preferences modal, Zustand
+store). Not needed for this wedding invitation site. `<LazyCookie />` unmounted
+from the root layout.
+
+---
 
 ## 2026-06-08l (Hero full-width glitch — restore scroll-driven paragraph)
 

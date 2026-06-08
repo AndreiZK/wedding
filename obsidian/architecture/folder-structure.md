@@ -1,6 +1,6 @@
 ---
 tags: [architecture, stable]
-updated: 2026-05-21
+updated: 2026-06-08m
 ---
 
 # Folder Structure
@@ -55,7 +55,7 @@ src/
 │
 ├── components/
 │   ├── ui/                 # Design-system primitives (Button, Input…) — empty, add as needed
-│   ├── common/             # Shared infrastructure (Cookie, grid, ReducedMotion, Skeletons)
+│   ├── common/             # Shared infrastructure (grid, ReducedMotion, Skeletons)
 │   └── animation/springs/  # ⚠️ Animation engine — #do-not-modify
 │
 ├── hooks/                  # Custom hooks, grouped by domain

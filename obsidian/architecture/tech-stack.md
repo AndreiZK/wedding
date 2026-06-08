@@ -1,6 +1,6 @@
 ---
 tags: [architecture, stable]
-updated: 2026-05-21
+updated: 2026-06-08m
 ---
 
 # Tech Stack
@@ -51,12 +51,6 @@ No `framer-motion`, no CSS transitions/keyframes. See [[animation-system]] and
 | `zod` | `^4.4.3` | Schema validation — env (`src/env.ts`) + API payloads. See [[api-architecture]] |
 
 See [[smooth-scroll]] and [[data-flow]].
-
-## Misc
-
-No miscellaneous runtime dependencies. Cookie consent is an in-house component
-(`src/components/common/Cookie/`) built on Zustand + `@react-spring/web` — the
-former `react-cookie-consent` package was removed. See [[components/common]].
 
 ## External integrations
 

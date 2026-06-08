@@ -1,6 +1,6 @@
 ---
 tags: [architecture, stable]
-updated: 2026-05-21
+updated: 2026-06-08m
 ---
 
 # System Overview
@@ -9,7 +9,7 @@ updated: 2026-05-21
 
 `next16-claude-starter` is a **frontend-only Next.js 16 starter** for building animation-heavy
 marketing and landing pages. It ships with a complete spring-animation system, smooth
-scrolling, SEO scaffolding, and cookie consent — ready to drop a design into.
+scrolling, and SEO scaffolding — ready to drop a design into.
 
 There is **no backend, database, or auth** yet. See [[backend/README]].
 
@@ -23,8 +23,6 @@ app/layout.tsx ──────────────► RootLayout
    │   loads Onest font, globals.css, metadata
    │
    ├─ <ScrollLayout>  ◄──── Lenis smooth scroll + Zustand scroll store
-   │     │
-   │     ├─ <LazyCookie/> ◄── cookie consent banner + modal (client, dynamic, no SSR)
    │     │
    │     └─ {children}
    │           │
@@ -50,7 +48,7 @@ Rendered page — Server Components by default; "use client" only at animation l
 ## Request lifecycle
 
 1. Next.js resolves the route under `app/`.
-2. `RootLayout` wraps the page in `<ScrollLayout>` → `<LazyCookie/>` → `{children}`.
+2. `RootLayout` wraps the page in `<ScrollLayout>` → `{children}`.
    The provider order is fixed — see [[data-flow]].
 3. The route file renders its **View** component.
 4. The View composes animation primitives. These are all `"use client"`.

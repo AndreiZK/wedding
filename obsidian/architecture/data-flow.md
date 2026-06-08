@@ -1,6 +1,6 @@
 ---
 tags: [architecture, stable]
-updated: 2026-05-21
+updated: 2026-06-08m
 ---
 
 # Data Flow
@@ -16,7 +16,9 @@ The root layout (`src/app/layout.tsx`) wraps everything in this exact order.
 ```
 <html> <body>
   <ScrollLayout>        ← Lenis smooth scroll + scroll state store
-    <LazyCookie />      ← cookie consent banner + preferences modal
+    <AdaptiveGrid />    ← adaptive rem scaling
+    <ReducedMotion />   ← prefers-reduced-motion gate
+    <SiteLogo />
     {children}          ← the routed page
   </ScrollLayout>
 </body> </html>

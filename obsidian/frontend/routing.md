@@ -1,6 +1,6 @@
 ---
 tags: [frontend, stable]
-updated: 2026-05-21
+updated: 2026-06-08m
 ---
 
 # Routing
@@ -81,7 +81,7 @@ See [[decisions-log]] ADR-0019, ADR-0020, ADR-0021.
 ## Layouts
 
 - `src/app/layout.tsx` — the **root layout**. Holds the provider tree
-  (`ScrollLayout` → `AdaptiveGrid` / `ReducedMotion` / `Cookie` → children),
+  (`ScrollLayout` → `AdaptiveGrid` / `ReducedMotion` / `SiteLogo` → children),
   loads the Onest font and `globals.css`, exports `metadata` + `viewport`, and
   renders the JSON-LD script. See [[data-flow]].
 - Reusable layout *wrappers* (not route layouts) live in `src/layouts/` —
