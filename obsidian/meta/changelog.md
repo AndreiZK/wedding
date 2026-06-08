@@ -1,12 +1,22 @@
 ---
 tags: [meta, changelog]
-updated: 2026-06-08g
+updated: 2026-06-08h
 ---
 
 # Changelog
 
 Chronological log of notable changes to the project. Newest first.
 This is a human-curated log — not a mirror of `git log`.
+
+## 2026-06-08h (Site title + favicon)
+
+**Scope:** `site.ts`, `generate-page-metadata.ts`, `structured-data.ts`, `manifest.json`.
+
+**Document title** — `siteConfig.name` → «Свадьба Андрея и Ульяны» (drives `<title>`, Open Graph, JSON-LD). Description/author updated to wedding copy.
+
+**Favicon** — metadata `icons` now point at `public/favicon.png` (replaces missing multi-size starter assets). Manifest + JSON-LD logo aligned to the same file.
+
+---
 
 ## 2026-06-08g (Venue map — stop Lenis scroll bleed on wheel zoom)
 

@@ -1,6 +1,6 @@
 ---
 tags: [frontend, seo, stable]
-updated: 2026-05-21
+updated: 2026-06-08
 ---
 
 # SEO & Metadata
@@ -10,7 +10,8 @@ updated: 2026-05-21
 `src/lib/site.ts` (`siteConfig`) is the **single source of truth** for SEO —
 name, description, origin URL, OG image, Twitter handle, theme colour. The
 metadata generator, `robots.ts`, `sitemap.ts`, and the JSON-LD helper all read
-from it. **Update the placeholder values per project.** `#todo`
+from it. Wedding site values: name «Свадьба Андрея и Ульяны», favicon
+`public/favicon.png` (A & U monogram).
 
 `siteConfig.url` comes from `NEXT_PUBLIC_SITE_URL` (see [[environment-variables]]),
 falling back to `http://localhost:3000`.
