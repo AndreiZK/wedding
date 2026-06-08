@@ -1,6 +1,6 @@
 ---
 tags: [frontend, feature, wedding]
-updated: 2026-06-08f
+updated: 2026-06-08l
 ---
 
 # Wedding — Page Sections
@@ -50,7 +50,8 @@ single scroll-progress value (0→1) drives everything: the image **grows from t
 square to fill the viewport** (its aspect morphs to the screen's shape — on mobile
 square → portrait), the two headlines are **pushed away** (top slides up, bottom
 slides down) while they **blur and fade out**, and an **invitation
-paragraph reveals letter-by-letter with the scroll** (over a `--w-ink` scrim
+paragraph reveals letter-by-letter over a short scroll window once the image is full-screen**
+(over a `--w-ink` scrim
 ramped in for legibility once the image is **held** full-screen). Once it is fully
 visible the held stage **drifts up slowly** while the **next section slides up over
 it faster** — a parallax overlap — the **next section sliding out from underneath**
@@ -117,24 +118,13 @@ Client leaf. Key implementation notes:
   containers. `GAP_VH = 4` is the spacing between each headline group and the
   nearest image edge.
 - **Scrim & paragraph** — an `animated.span` `bg-w-ink` scrim fades to `0.5` over
-  `c [0.5,0.92]`; the paragraph is a **`<TextEngine mode="progress"
-  type="toggle">`** (`font-hand italic`) whose **letters pop in one by one** with the
-  scroll (`letterOut {opacity:0, y:"0.4em"}` → `letterIn {opacity:1, y:"0em"}`,
-  `letterConfig` spring) over the held window. Two gotchas (both in ADR-0015):
-  - **`trigger` must be a plain-DOM proxy.** Because the paragraph is pinned at
-    viewport centre it can't trigger on its own position, so its `trigger` is a
-    full-section proxy `<div ref … className="absolute inset-0 -z-10">` rendered as
-    the section's first child. ⚠️ It must be a *plain* node, **not** the
-    `<ProgressTrigger>` via `useImperativeHandle` — that ref is `null` when the
-    engine wires up, so progress falls back to the centred paragraph and the text
-    shows fully revealed from the top.
-  - **`type="toggle"`, not `"interpolate"`.** Toggle springs each letter in only
-    once `progress > index/letters`, so at progress 0 *all* letters are hidden.
-    Interpolate pre-reveals the first ~`coefficient` of letters at progress 0
-    (visible on load) and bunches the reveal into word-sized chunks.
-
-  The `start="center center"`/`end="center top"` window opens once the image is full
-  and closes just before the exit. Unlike the decorative headlines it keeps `seo` on
+  `c [0.5,0.92]`; the paragraph is a **`<TextEngine mode="once"
+  trigger={paraTriggerRef}>`** (`font-body`, Onest) on the full-section proxy —
+  `mode="progress"` / `type="toggle"`, short window (`center center` →
+  `center center+=120`) for a fast letter pop-in once the image is full-screen;
+  scroll-back reverses letters. **No setState** in `handleProgress` (a threshold
+  `setParaEnabled` caused a re-render snap at full width — reverted 2026-06-08l).
+  Fast stagger (`letterStagger: 16`). Unlike the decorative headlines it keeps `seo` on
   (default) — it's real content (the engine renders a clipped plain copy +
   `aria-hidden`s the split letters).
 - **Scroll affordance** — a small `eyebrow` "листайте" + hairline that shares the
@@ -387,8 +377,8 @@ preferences textarea, a gold outline submit button. On success the form swaps to
 `<PreferencesSuccess>` — a card panel (`bg-w-ink-2`, border, shadow matching
 calendar/map) with `eyebrow` "принято", letter-revealed `font-hand` heading,
 and centred word-fade body (`aria-live="polite"`).
-Below the form: an organizer-contact block (note text +
-phone number) and a closing line "Будем рады вас видеть!" in `font-hand italic
+Below the form: an organizer-contact block (note text, `organizerName` label beside
+the phone link, phone number) and a closing line "Будем рады вас видеть!" in `font-hand italic
 text-2xl text-w-gold`.
 
 ### Component — `preferences-section.tsx`
@@ -512,7 +502,7 @@ No border-radius token — photos and bands are flush-cropped rectangles.
 | Variable | Font | Subsets | Usage |
 |----------|------|---------|-------|
 | `--font-unbounded` | Unbounded | latin, cyrillic | `font-punch` — section h2/h3 headings, logo letters |
-| `--font-caveat` | Caveat | latin, cyrillic | `font-hand` — captions, times, invitation paragraph, closing |
+| `--font-caveat` | Caveat | latin, cyrillic | `font-hand` — captions, times, closing line |
 | `--font-sans` / `--font-body` (`--font-onest`) | Onest | latin, cyrillic | names, dates, labels, body |
 
 ### `eyebrow` utility

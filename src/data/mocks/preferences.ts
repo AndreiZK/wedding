@@ -22,6 +22,7 @@ export interface PreferencesContent {
     body: string;
   };
   organizerNote: string;
+  organizerName: string;
   organizerPhone: string;
   closing: string;
 }
@@ -51,6 +52,7 @@ export const preferencesMock: PreferencesContent = {
   },
   organizerNote:
     "Если вдруг хотите сделать какой-то сюрприз, и нужно встроить это в программу, вот контакт организатора:",
+  organizerName: "Светлана",
   organizerPhone: "+375 (29) 582-62-62",
   closing: "Будем рады вас видеть!",
 };

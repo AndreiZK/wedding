@@ -247,21 +247,26 @@ export const PreferencesSection = ({ content }: PreferencesSectionProps) => {
           >
             {content.organizerNote}
           </TextEngine>
-          <a
-            href={`tel:${content.organizerPhone.replace(/\D/g, "")}`}
-            className="font-sans text-sm tracking-[0.18em] text-w-bone hover:text-w-gold"
-          >
-            <TextEngine
-              tag="span"
-              mode="once"
-              letterIn={{ opacity: 1, y: "0em" }}
-              letterOut={{ opacity: 0, y: "0.3em" }}
-              letterConfig={{ tension: 600, friction: 32 }}
-              delayIn={280}
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+            <span className="font-sans text-xs uppercase tracking-[0.18em] text-w-muted">
+              {content.organizerName}
+            </span>
+            <a
+              href={`tel:${content.organizerPhone.replace(/\D/g, "")}`}
+              className="font-sans text-sm tracking-[0.18em] text-w-bone hover:text-w-gold"
             >
-              {content.organizerPhone}
-            </TextEngine>
-          </a>
+              <TextEngine
+                tag="span"
+                mode="once"
+                letterIn={{ opacity: 1, y: "0em" }}
+                letterOut={{ opacity: 0, y: "0.3em" }}
+                letterConfig={{ tension: 600, friction: 32 }}
+                delayIn={280}
+              >
+                {content.organizerPhone}
+              </TextEngine>
+            </a>
+          </div>
         </div>
 
         {/* Closing line */}

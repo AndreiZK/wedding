@@ -86,30 +86,20 @@ const PUNCH_CLASS =
   "flex flex-wrap font-punch text-[2.25rem] font-extrabold leading-[0.9] tracking-tight uppercase py-[0.06em] md:text-[4rem]";
 
 /**
- * Invitation paragraph — letters reveal **one by one**, scrubbed by the hero's own
- * scroll. The scroll reference is a full-section **proxy element** (the paragraph
- * itself is pinned at viewport centre, so it can't trigger on its own position;
- * the proxy is a plain DOM node so its ref is set before the engine wires up — a
- * `useImperativeHandle` ref like `<ProgressTrigger>`'s is still null at that point).
- *
- * `type="toggle"` (not `"interpolate"`): each letter springs in only once scroll
- * progress passes its index threshold (`progress > index / letters`), so at the
- * window start (progress 0) **every** letter is hidden and they then pop in in
- * order. `interpolate` instead pre-reveals the first ~`coefficient` share of
- * letters at progress 0 (window `[itemPos − coeff, itemPos]`), which left the text
- * visible on load and bunched the reveal into word-sized chunks.
- *
- * The window (`center center` → `center top`) opens once the image is full-screen
- * and closes just before the next section slides over the held stage.
+ * Invitation paragraph — scroll-driven `mode="progress"` / `type="toggle"` on a
+ * full-section proxy (no React setState — avoids a re-render snap when the image
+ * hits full width). A **short** progress window (`center center` → `+=120px`)
+ * makes letters pop in quickly once the image is full-screen; scrolling back
+ * reverses them. `font-body` (Onest) for legible Cyrillic on mobile.
  */
 const PARA_REVEAL = {
   mode: "progress",
   type: "toggle",
   start: "center center",
-  end: "center top",
-  letterOut: { opacity: 0, y: "0.4em" },
+  end: "center center+=120",
+  letterOut: { opacity: 0, y: "0.25em" },
   letterIn: { opacity: 1, y: "0em" },
-  letterConfig: { tension: 700, friction: 34 },
+  letterConfig: { tension: 520, friction: 26 },
 } as const;
 
 /**
@@ -117,15 +107,15 @@ const PARA_REVEAL = {
  * value drives a staged sequence: (1) a small **square** image grows until it fits
  * the viewport's shape, pushing the headlines away (up / down) as they blur and
  * fade; (2) with the image held full-screen, the invitation paragraph reveals
- * **letter by letter**; (3) once it is fully visible the stage keeps holding while
- * the next section slides up over it (handoff in `home.tsx`). All motion is
- * react-spring — the choreography (1) runs off a clamped `c`, the reveal (2) off
- * the same scroll via the paragraph's own progress trigger.
+ * **letter by letter** over a short scroll window; (3) once it is fully visible
+ * the stage keeps holding while the next section slides up over it (handoff in
+ * `home.tsx`). All motion is react-spring — the choreography (1) runs off a
+ * clamped `c`, the reveal (2) off the paragraph's own progress trigger.
  */
 export const HeroSection = ({ data }: HeroSectionProps) => {
   const { width: vw, height: vh } = useWindowSize();
-  // Full-section proxy node used as the scroll reference for the pinned
-  // paragraph's reveal. Plain DOM ref so it is set before the engine reads it.
+  // Full-section proxy for the paragraph reveal — plain DOM ref so it is set
+  // before the engine wires up (ProgressTrigger's ref is still null at that point).
   const paraTriggerRef = useRef<HTMLDivElement>(null);
   // Initial image dims; the box morphs from here to the full viewport, so its
   // aspect ratio interpolates from the initial crop to the screen's shape.
@@ -342,13 +332,13 @@ export const HeroSection = ({ data }: HeroSectionProps) => {
           </svg>
         </animated.div>
 
-        {/* Invitation paragraph — letters reveal one by one with the scroll */}
+        {/* Invitation paragraph — scroll progress on proxy; short window = fast pop-in */}
         <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center px-8">
           <TextEngine
             tag="p"
             trigger={paraTriggerRef}
             {...PARA_REVEAL}
-            className="max-w-[34rem] text-balance text-center font-hand text-2xl italic leading-relaxed text-w-bone md:text-3xl"
+            className="max-w-[34rem] text-balance text-center font-body text-xl font-light leading-relaxed tracking-wide text-w-bone md:text-2xl"
           >
             {data.paragraph}
           </TextEngine>

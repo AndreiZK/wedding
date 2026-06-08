@@ -1,12 +1,48 @@
 ---
 tags: [meta, changelog]
-updated: 2026-06-08h
+updated: 2026-06-08l
 ---
 
 # Changelog
 
 Chronological log of notable changes to the project. Newest first.
 This is a human-curated log — not a mirror of `git log`.
+
+## 2026-06-08l (Hero full-width glitch — restore scroll-driven paragraph)
+
+**Scope:** `hero-section.tsx`.
+
+**Root cause.** The `mode="once"` + `setParaEnabled` / `paraOpacity` approach fired a React setState at `IMAGE_FULL_P` (same moment the image hits full width), re-rendering the component and disrupting the spring-driven image size — visible as a snap.
+
+**Fix.** Restored scroll-driven `TextEngine` (`mode="progress"` / `type="toggle"`) on the full-section proxy — zero setState in `handleProgress`, same pattern as before the automatic-reveal experiment. Short window (`center center` → `center center+=120`) keeps letters popping in quickly; scroll-back reverses them. Kept `font-body` + snappier `letterConfig`. Reverted `api.set` / memoised chains / `paraEnabled` / opacity wrapper.
+
+---
+
+## 2026-06-08k (Hero image snap at paragraph reveal — fix)
+
+**Scope:** `hero-section.tsx`.
+
+**Threshold snap removed.** `paraRevealKey` remount dropped (re-render at `IMAGE_FULL_P` recreated `.to()` chains and looked like an image-size jump). Paragraph now toggles `enabled` only on threshold *crossings*. Scroll progress uses `api.set` (not `api.start`) so `p` tracks scroll without spring lag. Spring interpolations memoised so threshold setStates don't rebuild chains.
+
+---
+
+## 2026-06-08j (Hero paragraph hides on scroll-back)
+
+**Scope:** `hero-section.tsx`.
+
+**Scroll-back fix.** Invitation paragraph wrapper opacity now tracks choreography `c` (`[0, 0.8, 0.85] → [0, 0, 1]`) so copy fades out as the image shrinks. `paraRevealKey` remounts `TextEngine` on each upward crossing of `IMAGE_FULL_P` so the cascade replays on re-entry (replaces one-shot `paraRevealed` flag).
+
+---
+
+## 2026-06-08i (Organizer name; hero paragraph auto-reveal)
+
+**Scope:** `preferences.ts`, `preferences-section.tsx`, `hero-section.tsx`.
+
+**Organizer label** — `organizerName: "Светлана"` shown as a small tracked label beside the phone link in the preferences section.
+
+**Hero invitation paragraph** — no longer scroll-scrubbed (`mode="progress"` + proxy trigger removed). Fires automatically once the image reaches full-screen (`IMAGE_FULL_P = HOLD_START × 0.85`) via `enabled={paraRevealed}` + `mode="once"`. Faster cascade (`letterStagger: 16`, snappier spring). Typography switched `font-hand italic` → `font-body` (Onest) for clearer Cyrillic on mobile.
+
+---
 
 ## 2026-06-08h (Site title + favicon)
 
