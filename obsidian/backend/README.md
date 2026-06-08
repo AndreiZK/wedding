@@ -1,6 +1,6 @@
 ---
 tags: [backend, stable]
-updated: 2026-05-22
+updated: 2026-06-08
 ---
 
 # Backend
@@ -16,6 +16,8 @@ database or authentication.
 - **Env validation** — `src/env.ts` (zod), public vs server-only split.
 - **Shared API helpers** — `src/lib/api/` (`handle`, `ApiError`) and the
   client-side `src/lib/api-client.ts`.
+- **Upstream clients** — `src/lib/telegram.ts` (Telegram Bot API for guest-form
+  delivery; see [[api-architecture]], ADR-0034).
 
 ## What does not exist yet
 

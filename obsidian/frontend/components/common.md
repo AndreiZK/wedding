@@ -155,9 +155,10 @@ JavaScript API**, used by the location pin ([[components/wedding-sections]]).
   tokens** read at runtime (`getComputedStyle`), so the map matches the site (land
   `--w-ink-2`, water `--w-ink`, labels `--w-muted`/`--w-bone`, a few warm-brown road
   shades). The venue marker is a **gold `CIRCLE` symbol** (`--w-gold` fill, `--w-bone`
-  stroke). UI chrome is disabled; `gestureHandling: "greedy"` — a single-finger drag
-  pans and pinch zooms directly, so the map is fully interactive on touch devices (the
-  former `"cooperative"` required two fingers / ctrl-scroll).
+  stroke). UI chrome is disabled; `gestureHandling: "greedy"` — drag pans and
+  wheel/pinch zoom directly on the map. The map container has `data-lenis-prevent` so
+  Lenis does not also smooth-scroll the page while the cursor is over it (nested-scroll
+  pattern — see [[smooth-scroll]]).
 - **Loads once** via [[hooks|`useGoogleMaps`]] (singleton script inject, keyed on
   `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`). The map is created in a `useEffect` once the
   loader is `ready`.

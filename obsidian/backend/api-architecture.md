@@ -1,6 +1,6 @@
 ---
 tags: [backend, api, stable]
-updated: 2026-05-22
+updated: 2026-06-08
 ---
 
 # API Architecture
@@ -95,8 +95,9 @@ Server Components instead (no client request at all).
 (logs server-side); set `CONTACT_ENDPOINT` to forward leads upstream.
 
 `app/api/preferences/route.ts` — the wedding guest-preferences endpoint (see
-[[components/wedding-sections]]). Same pattern: all-optional zod schema, logs or
-forwards to `CONTACT_ENDPOINT` (tagged `kind: "wedding_preferences"`).
+[[components/wedding-sections]]). Same pattern: all-optional zod schema, delivers
+via Telegram Bot API when `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` are set
+(`src/lib/telegram.ts`), otherwise logs server-side.
 
 ## Related
 

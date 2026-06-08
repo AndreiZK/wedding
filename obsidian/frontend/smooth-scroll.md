@@ -66,6 +66,14 @@ scrollTo(0);                    // back to top
 
 `scrollTo` temporarily disables scroll state during the animation when needed.
 
+## Nested / embedded scroll
+
+Lenis smooth-scrolls the page on wheel events. Embedded interactives (e.g.
+`<VenueMap>`) must opt out or the page scrolls alongside the embed. Put
+`data-lenis-prevent` on the element (or `data-lenis-prevent-wheel` for wheel only)
+— Lenis walks the event's `composedPath` and skips smoothing when it finds the
+attribute. See `<VenueMap>` in [[components/common]].
+
 ## Related
 
 [[data-flow]] · [[system-overview]] · [[hooks]]

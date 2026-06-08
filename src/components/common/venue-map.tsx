@@ -83,9 +83,9 @@ export const VenueMap = ({ lat, lng, zoom = 15, title }: VenueMapProps) => {
       disableDefaultUI: true,
       clickableIcons: false,
       keyboardShortcuts: false,
-      // "greedy" — a single-finger drag pans and pinch zooms directly (no
-      // two-finger / ctrl-scroll requirement), so the map is fully interactive
-      // on touch devices.
+      // "greedy" — drag pans and wheel/pinch zoom directly on the map (no
+      // ctrl-scroll requirement). The container carries `data-lenis-prevent` so
+      // Lenis does not also smooth-scroll the page while the pointer is over it.
       gestureHandling: "greedy",
       backgroundColor: palette.ink,
       styles: mapStyles(palette),
@@ -123,5 +123,13 @@ export const VenueMap = ({ lat, lng, zoom = 15, title }: VenueMapProps) => {
     );
   }
 
-  return <div ref={ref} role="img" aria-label={title} className={FRAME} />;
+  return (
+    <div
+      ref={ref}
+      role="img"
+      aria-label={title}
+      className={FRAME}
+      data-lenis-prevent
+    />
+  );
 };

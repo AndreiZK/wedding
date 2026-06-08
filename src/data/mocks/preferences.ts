@@ -17,6 +17,7 @@ export interface PreferencesContent {
   submittingLabel: string;
   errorRetryLabel: string;
   success: {
+    eyebrow: string;
     heading: string;
     body: string;
   };
@@ -38,18 +39,18 @@ export const preferencesMock: PreferencesContent = {
     allergiesLabel: "Аллергии и ограничения в еде",
     allergiesPlaceholder: "Например: орехи, лактоза…",
     preferencesLabel: "Пожелания",
-    preferencesPlaceholder:
-      "Музыка, рассадка, что угодно — поделитесь с нами",
+    preferencesPlaceholder: "Музыка, рассадка, что угодно — поделитесь с нами",
   },
   submitLabel: "Отправить",
   submittingLabel: "Отправляем…",
   errorRetryLabel: "Отправить ещё раз",
   success: {
+    eyebrow: "принято",
     heading: "Спасибо!",
     body: "Мы получили ваши пожелания и обязательно их учтём.",
   },
   organizerNote:
     "Если вдруг хотите сделать какой-то сюрприз, и нужно встроить это в программу, вот контакт организатора:",
-  organizerPhone: "+7 (029) 000-00-00",
+  organizerPhone: "+375 (29) 582-62-62",
   closing: "Будем рады вас видеть!",
 };

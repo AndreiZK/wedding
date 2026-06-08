@@ -1,6 +1,6 @@
 ---
 tags: [frontend, feature, wedding]
-updated: 2026-06-08
+updated: 2026-06-08f
 ---
 
 # Wedding — Page Sections
@@ -87,9 +87,11 @@ Client leaf. Key implementation notes:
   stacked radial gradients built from the `--w-*` tokens via `color-mix` (no raw
   hex). Only visible around the small square; covered once the image fills.
 - **Image (initial crop → screen morph)** — `next/image` `fill object-cover` in an
-  `animated.div` positioned with inline `top: calc(50% - CONTENT_OFFSET_VH vh)`,
-  `left: 50%`, `transform: translate(-50%,-50%)` — `CONTENT_OFFSET_VH = 4` shifts
-  the composition 4 vh above true centre. `width` animates from `side`
+  `animated.div` positioned with inline `top: calc(50% - contentOffsetVh vh)`,
+  `left: 50%`, `transform: translate(-50%,-50%)` — `CONTENT_OFFSET_VH = 4` on
+  desktop (`vw ≥ 768`) shifts the composition 4 vh above true centre; mobile uses
+  `MOBILE_CONTENT_OFFSET_VH = 1.5` so the image + headlines sit a touch lower
+  (scroll affordance at `bottom-[5vh]` is independent). `width` animates from `side`
   (`min(vw,vh) * SQUARE_FRAC 0.6`) to `vw`; `height` animates from `initialH` to
   `vh + 2·offsetPx` over `c [0,0.85]`. **`initialH`** is `side` on mobile (the
   original 1:1 square) but **`side × DESKTOP_HEIGHT_FRAC 0.5`** on desktop
@@ -102,11 +104,11 @@ Client leaf. Key implementation notes:
   headline positioning below.
 - **Headlines** — both headline groups are `position: absolute` with inline `bottom`/
   `top` anchored to the image's true position:
-  - *Top group* (`bottom: calc(50% + CONTENT_OFFSET_VH vh + side/2 px + GAP_VH vh)`):
+  - *Top group* (`bottom: calc(50% + contentOffsetVh vh + initialH/2 px + GAP_VH vh)`):
     kicker `<p font-hand -rotate-2>`, `TextEngine font-punch text-w-bone` (first
     word of `topText`), `TextEngine font-punch text-w-gold` (remaining words). Both
     TextEngine lines use `LINE_REVEAL` + `PUNCH_CLASS`.
-  - *Bottom group* (`top: calc(50% − CONTENT_OFFSET_VH vh + side/2 px + GAP_VH vh)`):
+  - *Bottom group* (`top: calc(50% − contentOffsetVh vh + initialH/2 px + GAP_VH vh)`):
     `TextEngine HAND_REVEAL font-hand text-3xl text-w-gold` for `bottomText`.
     `HAND_REVEAL` is a word-fade config (no `overflow:true`) — Caveat's glyphs
     overhang their advance boxes and a `wrapLine overflow:hidden` clips the last
@@ -176,7 +178,10 @@ the exit window (slightly faster than the section itself). See ADR-0024.
 
 Client leaf. The `<section>` holds the real `<h2 class="sr-only">` + `<time>`.
 Each panel is a `<ProgressTrigger tag="div" start="top bottom" end="bottom top"
-className="h-dvh overflow-hidden bg-w-ink">`.
+className="h-dvh overflow-hidden">`. The **date** panel carries `bg-w-ink`; the
+**location** panel does not — it inherits the same oat ground from the `home.tsx`
+wrapper (`bg-w-ink` on the `z-20` content shell), so the date→location overlap
+does not stack a second opaque layer during the handoff.
 
 **Entry trigger:** each panel's heading is observed via the shared [[hooks#`useRevealOnEnter`|`useRevealOnEnter`]] (`REVEAL_ROOT_MARGIN`, 80vh-from-top line) — for a dvh panel that's the same point as the old `threshold 0.7` on content, now the project-wide reveal line (ADR-0032). Exit parallax: `dp.to([0,0.5,1],[0,0,-12])`, driven via `dpApi.set()` (immediate, no spring lag — prevents stale value on re-entry). See [[#Shared transition system]], ADR-0028/0029/0032.
 
@@ -191,7 +196,7 @@ className="h-dvh overflow-hidden bg-w-ink">`.
 | t 0.58→0.70 | gold ring draws on the 16th |
 | delay 2200 ms | gathering-time note fades / rises in |
 
-**Location panel** (`h-dvh`, −mt-[20vh]):
+**Location panel** (`h-dvh`, `−mt-[20vh]`, no `bg-w-ink` on the panel):
 
 | Event | What happens |
 |-------|--------------|
@@ -371,14 +376,18 @@ Each `DresscodeOption` is `{ id, label, caption, looks: DresscodeLook[] }` —
 ## Preferences (form)
 
 Files: `src/views/wedding/preferences-section.tsx`,
-`src/data/mocks/preferences.ts`, `src/hooks/use-submit-preferences.ts`,
-`src/app/api/preferences/route.ts`.
+`src/views/wedding/preferences-success.tsx`, `src/data/mocks/preferences.ts`,
+`src/hooks/use-submit-preferences.ts`, `src/app/api/preferences/route.ts`,
+`src/lib/telegram.ts`.
 
 **Look & feel** — an **optional** guest form (every field optional). Eyebrow +
 italic h2 + intro, then underline-style fields on the dark ground: name input, an
 "alcohol" checkbox (sharp gold box with an ink check), allergies input, a
 preferences textarea, a gold outline submit button. On success the form swaps to
-a `Спасибо!` panel. Below the form: an organizer-contact block (note text +
+`<PreferencesSuccess>` — a card panel (`bg-w-ink-2`, border, shadow matching
+calendar/map) with `eyebrow` "принято", letter-revealed `font-hand` heading,
+and centred word-fade body (`aria-live="polite"`).
+Below the form: an organizer-contact block (note text +
 phone number) and a closing line "Будем рады вас видеть!" in `font-hand italic
 text-2xl text-w-gold`.
 
@@ -393,8 +402,9 @@ errors render in `text-w-clay` with `role="alert"`.
   `<span>` using `peer-checked:` (gold fill) and `peer-focus-visible:` (ring). The
   check `<svg>` is always `--w-ink`-coloured, so it's invisible on the transparent
   box and shows only against the gold checked fill — no `peer` on a nested node.
-- **Success** — conditional render (not `<Handle>`, to avoid re-running its
-  transition on each keystroke); the success panel fades in with `<Spring mode="once">`.
+- **Success** — conditional render swaps the form for `<PreferencesSuccess>` (not
+  `<Handle>`, to avoid re-running transitions on each keystroke). Card +
+  `TextEngine` cascade on mount; plain `sr-only` copy for screen readers.
 - **Eyebrow + h2** — the shared `<SectionHeading eyebrow heading headingDelayIn={200}>` (uncontrolled — its own IntersectionObserver fires once on entry). Replaces the former `SpringTrigger` eyebrow + standalone `TextEngine` h2. See ADR-0030 (was ADR-0027).
 - **Intro** — `<TextEngine mode="once">` `delayIn={380}`; its own IO handles timing (section is at ~1400 vh DOM position).
 - **Form fields** — each wrapped in `<SpringTrigger mode="once" trigger={sectionRef} start="top bottom" end="center bottom" from={{ opacity:0, y:20 }} to={{ opacity:1, y:0 }}>` with staggered `delayIn` (600 / 700 / 800 / 900 / 1000 ms). `trigger={sectionRef}` prevents the infinite rAF loop that `y: 20` would cause when each element uses its own bbox as trigger.
@@ -406,13 +416,31 @@ errors render in `text-w-clay` with `role="alert"`.
 **Semantics** — `<form noValidate>`, every control has a `<label htmlFor>`, the
 name input uses `autoComplete="name"`, section `aria-label`.
 
+### Component — `preferences-success.tsx` (`PreferencesSuccess`)
+
+Client leaf; rendered once when `useSubmitPreferences` reports `status === "success"`.
+Replaces the form in-place (not `<Handle>`).
+
+- **Card** — `max-w-[26rem]`, `bg-w-ink-2`, `border-w-bone/15`, shadow matching
+  `CalendarFlip` / `<VenueMap>` panels.
+- **Copy** — `eyebrow` label (`content.success.eyebrow`, default "принято");
+  `TextEngine` letter-reveal for `font-hand` heading (`justify-center`); centred
+  word-fade body (`flex flex-wrap justify-center` — see TextEngine centring gotcha).
+- **A11y** — outer wrapper `aria-live="polite"`; decorative animated copy
+  `aria-hidden`; plain `sr-only` paragraph with heading + body for screen readers.
+
 ### API — `app/api/preferences/route.ts`
 
 Follows the [[api-architecture]] convention: a `zod` schema (all fields optional,
 trimmed, length-capped), the `handle()` wrapper / `{ data }` envelope, secrets
-server-side. Forwards to `CONTACT_ENDPOINT` when set (tagged
-`kind: "wedding_preferences"`), otherwise logs server-side so it runs as-is. No
-new env var.
+server-side. Delivers to Telegram via `src/lib/telegram.ts` when
+`TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` are set (pair-validated in `getServerEnv()`),
+otherwise logs server-side. Setup documented in `.env.example`. See ADR-0034.
+
+### Mock data — `preferences.ts`
+
+`PreferencesContent` includes `success: { eyebrow, heading, body }` for the
+post-submit card (eyebrow default "принято").
 
 ## Shared system
 

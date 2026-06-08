@@ -1,12 +1,29 @@
 ---
 tags: [meta, decision]
-updated: 2026-06-08
+updated: 2026-06-08e
 ---
 
 # Decisions Log (ADRs)
 
 Architecture Decision Records. Each entry captures a choice, its context, and its
 consequences. Use [[templates/adr-note]] for new entries. Newest first.
+
+---
+
+## ADR-0034 — Guest form delivery via Telegram Bot API
+
+- **Status:** Accepted
+- **Date:** 2026-06-08
+
+**Context.** The wedding preferences form needed a real notification channel to the hosts. The starter's `/api/preferences` route previously forwarded to a generic `CONTACT_ENDPOINT` webhook (same as `/api/contact`) or logged server-side — workable for a template, but not tailored to a one-person wedding site where the organizer wants an instant mobile ping.
+
+**Decision.**
+1. **Telegram as the preferences upstream.** `/api/preferences` delivers via the Telegram Bot API (`sendMessage`) when `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` are set. Both are server-only env vars, validated as a pair in `getServerEnv()` (both or neither).
+2. **Shared client in `src/lib/telegram.ts`.** `formatPreferencesMessage` builds an HTML message (user input escaped); `sendTelegramMessage` calls the Bot API and maps failures to `ApiError(502)`. Keeps the route handler thin per [[api-architecture]].
+3. **`CONTACT_ENDPOINT` unchanged for `/api/contact`.** Only the preferences route switches to Telegram; the generic webhook remains for other lead forms.
+4. **Dev fallback.** When Telegram vars are unset, submissions log server-side so the starter runs without credentials.
+
+**Consequences.** The organizer must create a bot (@BotFather), message it once, and copy the chat ID from `getUpdates` (documented in `.env.example`). Telegram's HTML parse mode limits formatting but is sufficient for the short RU field summary. No new npm dependency — plain `fetch`. Browser never holds the token. A dedicated success UI (`PreferencesSuccess`) replaces the minimal post-submit state so guests get clear confirmation independent of the delivery channel.
 
 ---
 

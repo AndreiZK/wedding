@@ -2,14 +2,18 @@ import { z } from "zod";
 
 import { getServerEnv } from "@/env";
 import { ApiError, handle } from "@/lib/api";
+import {
+  formatPreferencesMessage,
+  sendTelegramMessage,
+} from "@/lib/telegram";
 
 /**
  * Guest preferences endpoint for the wedding invitation form.
  *
  * Every field is optional — the form itself is optional for guests. Follows the
  * project API convention: validate with zod, return the `{ data }` envelope, keep
- * secrets server-side. Forwards to `CONTACT_ENDPOINT` when set, otherwise logs so
- * the starter runs as-is.
+ * secrets server-side. Delivers to Telegram when `TELEGRAM_BOT_TOKEN` and
+ * `TELEGRAM_CHAT_ID` are set; otherwise logs so the starter runs as-is.
  */
 const preferencesSchema = z.object({
   name: z.string().trim().max(100).optional(),
@@ -21,19 +25,16 @@ const preferencesSchema = z.object({
 export const POST = handle(async (req) => {
   const input = preferencesSchema.parse(await req.json());
 
-  const { CONTACT_ENDPOINT } = getServerEnv();
+  const { TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID } = getServerEnv();
 
-  if (CONTACT_ENDPOINT) {
-    const upstream = await fetch(CONTACT_ENDPOINT, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ kind: "wedding_preferences", ...input }),
+  if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+    await sendTelegramMessage({
+      token: TELEGRAM_BOT_TOKEN,
+      chatId: TELEGRAM_CHAT_ID,
+      text: formatPreferencesMessage(input),
     });
-    if (!upstream.ok) {
-      throw new ApiError(502, "upstream_error", "Не удалось отправить анкету.");
-    }
   } else {
-    console.log("[api/preferences] submission:", input);
+    console.log("[api/preferences] submission (Telegram not configured):", input);
   }
 
   return { received: true };

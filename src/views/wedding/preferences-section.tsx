@@ -4,9 +4,9 @@ import { useRef, useState } from "react";
 import { easings } from "@react-spring/web";
 import TextEngine from "spring-text-engine";
 
-import { Spring } from "@/components/animation/springs/spring";
 import { SpringTrigger } from "@/components/animation/springs/spring-trigger";
 import { SectionHeading } from "@/views/wedding/section-heading";
+import { PreferencesSuccess } from "@/views/wedding/preferences-success";
 import type { PreferencesContent } from "@/data/mocks/preferences";
 import { useSubmitPreferences } from "@/hooks/use-submit-preferences";
 
@@ -75,21 +75,7 @@ export const PreferencesSection = ({ content }: PreferencesSectionProps) => {
         </TextEngine>
 
         {status === "success" ? (
-          <Spring
-            tag="div"
-            mode="once"
-            from={{ opacity: 0, y: 16 }}
-            to={{ opacity: 1, y: 0 }}
-            config={{ tension: 90, friction: 20 }}
-            className="mt-8 flex flex-col items-center gap-3"
-          >
-            <span className="font-hand text-3xl italic text-w-gold">
-              {content.success.heading}
-            </span>
-            <p className="max-w-[24rem] font-body text-sm font-light text-w-muted">
-              {content.success.body}
-            </p>
-          </Spring>
+          <PreferencesSuccess content={content.success} />
         ) : (
           <form
             onSubmit={handleSubmit}

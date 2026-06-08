@@ -32,6 +32,9 @@ const DESKTOP_HEIGHT_FRAC = 0.5;
  */
 const CONTENT_OFFSET_VH = 4;
 
+/** Mobile sits the composition a touch lower — desktop keeps the upward shift. */
+const MOBILE_CONTENT_OFFSET_VH = 1.5;
+
 /** Gap between the image edge and the nearest headline, in vh. */
 const GAP_VH = 4;
 
@@ -132,7 +135,8 @@ export const HeroSection = ({ data }: HeroSectionProps) => {
   // Pixel equivalent of CONTENT_OFFSET_VH — used to position the image above
   // the true viewport centre and to over-extend its full-screen height so the
   // bottom edge still lands exactly at the viewport floor.
-  const offsetPx = (vh * CONTENT_OFFSET_VH) / 100;
+  const contentOffsetVh = vw >= 768 ? CONTENT_OFFSET_VH : MOBILE_CONTENT_OFFSET_VH;
+  const offsetPx = (vh * contentOffsetVh) / 100;
 
   const [{ p }, api] = useSpring(() => ({
     p: 0,
@@ -219,7 +223,7 @@ export const HeroSection = ({ data }: HeroSectionProps) => {
             width: imageWidth,
             height: imageHeight,
             borderRadius: imageRadius,
-            top: `calc(50% - ${CONTENT_OFFSET_VH}vh)`,
+            top: `calc(50% - ${contentOffsetVh}vh)`,
             left: "50%",
             transform: "translate(-50%, -50%)",
           }}
@@ -250,7 +254,7 @@ export const HeroSection = ({ data }: HeroSectionProps) => {
             transform: topY,
             opacity: headlineOpacity,
             filter: headlineBlur,
-            bottom: `calc(50% + ${CONTENT_OFFSET_VH}vh + ${initialH / 2}px + ${GAP_VH}vh)`,
+            bottom: `calc(50% + ${contentOffsetVh}vh + ${initialH / 2}px + ${GAP_VH}vh)`,
           }}
           className="absolute left-0 right-0 z-30 px-6"
           aria-hidden="true"
@@ -289,7 +293,7 @@ export const HeroSection = ({ data }: HeroSectionProps) => {
             transform: bottomY,
             opacity: headlineOpacity,
             filter: headlineBlur,
-            top: `calc(50% - ${CONTENT_OFFSET_VH}vh + ${initialH / 2}px + ${GAP_VH}vh)`,
+            top: `calc(50% - ${contentOffsetVh}vh + ${initialH / 2}px + ${GAP_VH}vh)`,
           }}
           className="absolute left-0 right-0 z-30 px-6 text-center"
           aria-hidden="true"

@@ -1,12 +1,48 @@
 ---
 tags: [meta, changelog]
-updated: 2026-06-08
+updated: 2026-06-08g
 ---
 
 # Changelog
 
 Chronological log of notable changes to the project. Newest first.
 This is a human-curated log — not a mirror of `git log`.
+
+## 2026-06-08g (Venue map — stop Lenis scroll bleed on wheel zoom)
+
+**Scope:** `VenueMap`.
+
+**Map zoom no longer scrolls the page.** Added `data-lenis-prevent` on the live map container so Lenis ignores wheel/touch gestures over the embedded Google map — previously `gestureHandling: "greedy"` zoomed the map *and* Lenis smooth-scrolled the page on desktop.
+
+---
+
+## 2026-06-08f (Preferences success card — simplify)
+
+**Scope:** `preferences-success.tsx`.
+
+**Success card trimmed.** Removed the gold ring + hand-drawn check icon. Body copy centred via `flex flex-wrap justify-center` on the `TextEngine` (`text-center` alone is ineffective on the engine's flex root).
+
+---
+
+## 2026-06-08e (Telegram form delivery; preferences success UI)
+
+**Scope:** `src/lib/telegram.ts`, `src/env.ts`, `app/api/preferences/route.ts`, `preferences-success.tsx`, `preferences-section.tsx`, `preferences.ts`, `.env.example`.
+
+**Guest form → Telegram.** `/api/preferences` now delivers submissions via the Telegram Bot API when `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` are set (validated as a pair in `getServerEnv()`). `formatPreferencesMessage` builds an HTML message; `sendTelegramMessage` calls `sendMessage`. Unset → server-side log (dev-friendly). Replaces the old `CONTACT_ENDPOINT` forward on this route (`CONTACT_ENDPOINT` remains for `/api/contact`).
+
+**Success state UI.** New `PreferencesSuccess` — card panel (`bg-w-ink-2`, `border-w-bone/15`, shadow matching calendar/map), gold ring + hand-drawn check, `eyebrow` "принято", letter-revealed `font-hand` heading, word-fade body. `aria-live="polite"` + `sr-only` plain copy for assistive tech. See ADR-0034.
+
+---
+
+## 2026-06-08d (Hero mobile offset; location panel background)
+
+**Scope:** HeroSection, DateLocationSection.
+
+**Hero composition lower on mobile.** `contentOffsetVh` is now responsive: desktop keeps `CONTENT_OFFSET_VH = 4` (composition 4 vh above centre); mobile uses `MOBILE_CONTENT_OFFSET_VH = 1.5` (~2.5 vh lower). Image position, headline anchors, and `offsetPx` all follow the same value. The "листайте" scroll affordance (`bottom-[5vh]`) is unchanged.
+
+**Location panel — no duplicate background.** Removed `bg-w-ink` from the location `ProgressTrigger`. The oat ground is already on the parent wrapper in `home.tsx`; a second solid layer on the overlapping panel read as a hard seam during the date→location transition. Date panel keeps `bg-w-ink`.
+
+---
 
 ## 2026-06-08c (Desktop polish: typography, hero image, lightbox, map, dresscode colour)
 

@@ -23,10 +23,23 @@ const publicSchema = z.object({
   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: z.string().optional(),
 });
 
-const serverSchema = z.object({
-  /** Optional upstream the contact endpoint forwards leads to (CRM / webhook). */
-  CONTACT_ENDPOINT: z.url().optional(),
-});
+const serverSchema = z
+  .object({
+    /** Optional upstream the contact endpoint forwards leads to (CRM / webhook). */
+    CONTACT_ENDPOINT: z.url().optional(),
+    /** Telegram Bot API token — guest form submissions via `/api/preferences`. */
+    TELEGRAM_BOT_TOKEN: z.string().min(1).optional(),
+    /** Chat ID that receives preference submissions (your user or group ID). */
+    TELEGRAM_CHAT_ID: z.string().min(1).optional(),
+  })
+  .refine(
+    (env) =>
+      Boolean(env.TELEGRAM_BOT_TOKEN) === Boolean(env.TELEGRAM_CHAT_ID),
+    {
+      message:
+        "TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must both be set or both omitted.",
+    },
+  );
 
 /** Public env — safe to read anywhere (server or client). */
 export const publicEnv = publicSchema.parse({
@@ -44,6 +57,8 @@ let cachedServerEnv: z.infer<typeof serverSchema> | undefined;
 export function getServerEnv() {
   cachedServerEnv ??= serverSchema.parse({
     CONTACT_ENDPOINT: process.env.CONTACT_ENDPOINT,
+    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID,
   });
   return cachedServerEnv;
 }

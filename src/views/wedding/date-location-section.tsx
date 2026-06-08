@@ -157,7 +157,7 @@ export const DateLocationSection = ({ data }: DateLocationSectionProps) => {
         start="top bottom"
         end="bottom top"
         onChange={handleLocProgress}
-        className="relative -mt-[20vh] h-dvh overflow-hidden bg-w-ink"
+        className="relative -mt-[20vh] h-dvh overflow-hidden"
       >
         <animated.div
           style={{ transform: locExitY.to((v) => `translateY(${v}vh)`) }}
