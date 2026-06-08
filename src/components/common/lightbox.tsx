@@ -1,7 +1,7 @@
 // 📖 Docs: obsidian/frontend/components/common.md
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type TouchEvent } from "react";
 import { createPortal } from "react-dom";
 import { animated, useTransition } from "@react-spring/web";
 import Image from "next/image";
@@ -25,10 +25,10 @@ export interface LightboxProps {
 }
 
 /**
- * Full-screen image viewer. Backdrop / Esc / close button all dismiss; arrows and
- * on-screen chevrons page through `images`. Locks Lenis scroll while open and
- * restores focus to the opener on close. Rendered through a portal so the section's
- * `overflow-hidden` never clips it.
+ * Full-screen image viewer. Backdrop tap / Esc / close button all dismiss; paging
+ * is by **swipe** (touch) or the ←/→ keys (no on-screen chevrons). Locks Lenis
+ * scroll while open and restores focus to the opener on close. Rendered through a
+ * portal so the section's `overflow-hidden` never clips it.
  */
 export const Lightbox = ({
   images,
@@ -62,6 +62,32 @@ export const Lightbox = ({
   const goNext = useCallback(() => {
     if (index !== null) onIndexChange((index + 1) % count);
   }, [index, count, onIndexChange]);
+
+  // Swipe navigation — the only way to page through images on touch (the on-screen
+  // chevrons were removed). A mostly-horizontal drag past the threshold pages;
+  // swipe right → previous, left → next. Recording the start also suppresses the
+  // backdrop tap-close for that gesture (the backdrop closes on `click`, which a
+  // swipe doesn't emit).
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const SWIPE_THRESHOLD = 45;
+  const onTouchStart = useCallback((e: TouchEvent) => {
+    const t = e.touches[0];
+    touchStart.current = { x: t.clientX, y: t.clientY };
+  }, []);
+  const onTouchEnd = useCallback(
+    (e: TouchEvent) => {
+      const start = touchStart.current;
+      touchStart.current = null;
+      if (!start) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - start.x;
+      const dy = t.clientY - start.y;
+      if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) <= Math.abs(dy)) return;
+      if (dx > 0) goPrev();
+      else goNext();
+    },
+    [goPrev, goNext],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -101,11 +127,13 @@ export const Lightbox = ({
           aria-modal="true"
           aria-label="Просмотр фотографии"
           style={{ opacity: style.opacity }}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
           className="fixed inset-0 z-[120] flex items-center justify-center"
         >
           <div
             aria-hidden
-            onMouseDown={onClose}
+            onClick={onClose}
             className="absolute inset-0 cursor-zoom-out bg-w-ink/95 backdrop-blur-sm"
           />
 
@@ -151,43 +179,9 @@ export const Lightbox = ({
           </button>
 
           {count > 1 && (
-            <>
-              <button
-                type="button"
-                onClick={goPrev}
-                aria-label="Предыдущее фото"
-                className="absolute left-1 top-1/2 z-20 flex size-12 -translate-y-1/2 items-center justify-center text-w-bone hover:text-w-gold focus-visible:outline focus-visible:outline-1 focus-visible:outline-w-gold md:left-4"
-              >
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
-                  <path
-                    d="M15 5l-7 7 7 7"
-                    stroke="currentColor"
-                    strokeWidth="1.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-              <button
-                type="button"
-                onClick={goNext}
-                aria-label="Следующее фото"
-                className="absolute right-1 top-1/2 z-20 flex size-12 -translate-y-1/2 items-center justify-center text-w-bone hover:text-w-gold focus-visible:outline focus-visible:outline-1 focus-visible:outline-w-gold md:right-4"
-              >
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
-                  <path
-                    d="M9 5l7 7-7 7"
-                    stroke="currentColor"
-                    strokeWidth="1.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-              <p className="absolute bottom-5 left-1/2 z-20 -translate-x-1/2 font-sans text-xs tracking-[0.3em] text-w-bone/70">
-                {shown.num + 1} / {count}
-              </p>
-            </>
+            <p className="absolute bottom-5 left-1/2 z-20 -translate-x-1/2 font-sans text-xs tracking-[0.3em] text-w-bone/70">
+              {shown.num + 1} / {count}
+            </p>
           )}
         </animated.div>
       ) : null,

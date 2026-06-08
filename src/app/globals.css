@@ -70,36 +70,41 @@ body::after {
 
 @layer base {
   /* Adaptive scaling grid — scales the root font-size with the viewport so a
-     rem-based layout stays proportional. Each breakpoint divides FONT_BASE
-     (16px) by the design base width its range was laid out at:
-       font-size: 16 * 100 / baseWidth  (vw)
-     Above 1920px the AdaptiveGrid component takes over (scale-up).
-     Keep in sync with src/components/common/grid/grid.config.ts. */
+     rem-based layout stays proportional. Each desktop breakpoint divides
+     FONT_BASE (16px) by the design base width its range was laid out at, then
+     applies a 1.25× desktop legibility boost so rem-based text/spacing reads at
+     a proper desktop size (the layout was authored mobile-first, which left
+     desktop text small):
+       font-size: 16 * 100 / baseWidth * 1.25  (vw)
+     Mobile (≤640px) is unchanged. Above 1920px the AdaptiveGrid component takes
+     over (scale-up). The hero headline divides its md size by 1.25 to stay at
+     its designed px (see hero-section.tsx). Keep in sync with
+     src/components/common/grid/grid.config.ts. See ADR-0033. */
   html {
     font-size: 16px;
   }
 
   @media (max-width: 1920px) {
     html {
-      font-size: 0.833333vw; /* 16 * 100 / 1920 */
+      font-size: 1.041667vw; /* 16 * 100 / 1920 * 1.25 */
     }
   }
 
   @media (max-width: 1440px) {
     html {
-      font-size: 1.111111vw; /* 16 * 100 / 1440 */
+      font-size: 1.388889vw; /* 16 * 100 / 1440 * 1.25 */
     }
   }
 
   @media (max-width: 1024px) {
     html {
-      font-size: 1.5625vw; /* 16 * 100 / 1024 */
+      font-size: 1.953125vw; /* 16 * 100 / 1024 * 1.25 */
     }
   }
 
   @media (max-width: 640px) {
     html {
-      font-size: 4.444444vw; /* 16 * 100 / 360 */
+      font-size: 4.444444vw; /* 16 * 100 / 360  (mobile — unchanged) */
     }
   }
 }

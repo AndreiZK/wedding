@@ -13,8 +13,16 @@ export interface HeroSectionProps {
   data: HeroData;
 }
 
-/** Side of the initial square image as a fraction of the viewport's short edge. */
+/** Width of the initial image as a fraction of the viewport's short edge. */
 const SQUARE_FRAC = 0.6;
+
+/**
+ * On desktop the initial image is a **landscape** crop — its height is this
+ * fraction of its width — so the headline block clears the top of the viewport
+ * (a full square left too little room above; see the headline anchors below).
+ * Mobile keeps the 1:1 square (it was never cramped).
+ */
+const DESKTOP_HEIGHT_FRAC = 0.5;
 
 /**
  * Vertical offset (in vh) that shifts the entire hero composition upward.
@@ -62,9 +70,17 @@ const HAND_REVEAL = {
   wordConfig: { tension: 180, friction: 28 },
 } as const;
 
-/** Shared classes for the two-line Unbounded punch headline. */
+/**
+ * Shared classes for the two-line Unbounded punch headline.
+ *
+ * The `md:` size is `4rem` (not `5rem`): the desktop root font-size is scaled up
+ * ~1.25× by the adaptive grid (globals.css) so body text reads at a desktop size,
+ * and `4rem × 1.25 = 5rem`-equivalent px keeps the hero headline at its designed
+ * size — the fit math (image height vs. headline block) stays stable. Mobile is
+ * untouched. See [[design-system]] / ADR-0033.
+ */
 const PUNCH_CLASS =
-  "flex flex-wrap font-punch text-[2.25rem] font-extrabold leading-[0.9] tracking-tight uppercase py-[0.06em] md:text-[5rem]";
+  "flex flex-wrap font-punch text-[2.25rem] font-extrabold leading-[0.9] tracking-tight uppercase py-[0.06em] md:text-[4rem]";
 
 /**
  * Invitation paragraph — letters reveal **one by one**, scrubbed by the hero's own
@@ -108,9 +124,11 @@ export const HeroSection = ({ data }: HeroSectionProps) => {
   // Full-section proxy node used as the scroll reference for the pinned
   // paragraph's reveal. Plain DOM ref so it is set before the engine reads it.
   const paraTriggerRef = useRef<HTMLDivElement>(null);
-  // Initial square side; the box morphs from this square to the full viewport,
-  // so its aspect ratio interpolates from 1:1 to the screen's shape.
-  const side = Math.min(vw, vh) * SQUARE_FRAC;
+  // Initial image dims; the box morphs from here to the full viewport, so its
+  // aspect ratio interpolates from the initial crop to the screen's shape.
+  const side = Math.min(vw, vh) * SQUARE_FRAC; // initial width (unchanged)
+  // Initial height: shorter than the width on desktop, square on mobile.
+  const initialH = vw >= 768 ? side * DESKTOP_HEIGHT_FRAC : side;
   // Pixel equivalent of CONTENT_OFFSET_VH — used to position the image above
   // the true viewport centre and to over-extend its full-screen height so the
   // bottom edge still lands exactly at the viewport floor.
@@ -139,7 +157,7 @@ export const HeroSection = ({ data }: HeroSectionProps) => {
   // vh (top bleeds above the stage and is clipped by overflow-hidden on the stage).
   const imageWidth = c.to([0, 0.85, 1], [side, vw, vw]).to((v) => `${v}px`);
   const imageHeight = c
-    .to([0, 0.85, 1], [side, vh + 2 * offsetPx, vh + 2 * offsetPx])
+    .to([0, 0.85, 1], [initialH, vh + 2 * offsetPx, vh + 2 * offsetPx])
     .to((v) => `${v}px`);
   const imageRadius = c.to([0, 0.85, 1], [28, 0, 0]).to((v) => `${v}px`);
 
@@ -232,14 +250,14 @@ export const HeroSection = ({ data }: HeroSectionProps) => {
             transform: topY,
             opacity: headlineOpacity,
             filter: headlineBlur,
-            bottom: `calc(50% + ${CONTENT_OFFSET_VH}vh + ${side / 2}px + ${GAP_VH}vh)`,
+            bottom: `calc(50% + ${CONTENT_OFFSET_VH}vh + ${initialH / 2}px + ${GAP_VH}vh)`,
           }}
           className="absolute left-0 right-0 z-30 px-6"
           aria-hidden="true"
         >
           {/* Handwritten kicker — Caveat, slightly tilted, muted */}
           <p
-            className="mb-1 inline-block -rotate-2 font-hand text-2xl text-w-muted md:text-3xl"
+            className="mb-1 inline-block -rotate-2 font-hand text-2xl text-w-muted md:text-[1.5rem]"
             aria-hidden="true"
           >
             {data.kicker}
@@ -271,7 +289,7 @@ export const HeroSection = ({ data }: HeroSectionProps) => {
             transform: bottomY,
             opacity: headlineOpacity,
             filter: headlineBlur,
-            top: `calc(50% - ${CONTENT_OFFSET_VH}vh + ${side / 2}px + ${GAP_VH}vh)`,
+            top: `calc(50% - ${CONTENT_OFFSET_VH}vh + ${initialH / 2}px + ${GAP_VH}vh)`,
           }}
           className="absolute left-0 right-0 z-30 px-6 text-center"
           aria-hidden="true"

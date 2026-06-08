@@ -1,6 +1,6 @@
 ---
 tags: [frontend, design-system, stable]
-updated: 2026-05-22
+updated: 2026-06-08
 ---
 
 # Design System — Tailwind v4
@@ -114,6 +114,20 @@ Three fonts loaded in `src/app/layout.tsx`, all via `next/font/google`:
 Playfair Display was removed (2026-06-03). `--font-display` CSS variable has been
 dropped; all former `font-display` usages are replaced by `font-punch` (headings)
 or `font-hand` (captions). `html lang="ru"` is set — all fonts carry a `cyrillic` subset.
+
+### Root font-size scaling (adaptive grid + desktop boost)
+
+The root (`<html>`) font-size is viewport-scaled so the rem-based layout stays
+proportional — `vw` media queries in `globals.css` below `GRID_BASE_WIDTH` (1920),
+the `AdaptiveGrid` component above it. The layout was authored mobile-first, which
+left desktop text small, so every **desktop** bracket carries a **1.25× legibility
+boost** (`font-size: 16 * 100 / baseWidth * 1.25 vw`); mobile (≤640px) is unchanged.
+The same `DESKTOP_BOOST = 1.25` is applied in `useAdaptiveGrid` so the scale-up
+range stays continuous across the 1920px boundary. Anything that must keep a fixed
+px size despite the boost divides its desktop size by 1.25 — e.g. the hero headline
+(`md:text-[4rem]` = a designed `5rem`). To re-tune desktop text size, change the
+1.25 in both `globals.css` and `use-adaptive-grid.ts` (and the hero divisor). See
+ADR-0033.
 
 ## Styling rules
 

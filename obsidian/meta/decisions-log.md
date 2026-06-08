@@ -1,12 +1,169 @@
 ---
 tags: [meta, decision]
-updated: 2026-06-01
+updated: 2026-06-08
 ---
 
 # Decisions Log (ADRs)
 
 Architecture Decision Records. Each entry captures a choice, its context, and its
 consequences. Use [[templates/adr-note]] for new entries. Newest first.
+
+---
+
+## ADR-0033 — Desktop legibility boost (1.25× root rem) + hero headline decoupling
+
+- **Status:** Accepted
+- **Date:** 2026-06-08
+
+**Context.** The layout is authored mobile-first. The adaptive grid scales the root font-size by `16 * 100 / baseWidth` vw per bracket, hitting exactly 16px only at each bracket's base width (1024/1440/1920); at common desktop widths (1366, 1536, 1600) the root rem dips to ~12–15px, so all rem-based text/spacing renders small on desktop. Separately, the hero's initial image was a square (`min(vw,vh) * 0.6`); on desktop it left too little room above it and the top headline («МЫ») clipped off the top of the viewport (worse on 768px-tall laptops).
+
+**Decision.**
+1. **1.25× desktop boost.** Each desktop `vw` bracket in `globals.css` is multiplied by 1.25 (`16 * 100 / baseWidth * 1.25` vw); mobile (≤640px) is unchanged. `useAdaptiveGrid` applies the same `DESKTOP_BOOST = 1.25` to the >1920px scale-up range (and to its set/clear threshold) so the size is continuous across the 1920px boundary. Net: rem text/spacing reads ~25 % larger on desktop, proportionally (text, gaps, and rem max-widths all scale together).
+2. **Decouple the hero top headline.** Because the boost would re-enlarge the hero headline and re-introduce the clip, the fit-critical top block divides its `md:` sizes by 1.25 — punch `md:text-[5rem] → md:text-[4rem]`, kicker `md:text-3xl → md:text-[1.5rem]` — so `4rem × 1.25 = 5rem`-equivalent px: the rendered headline is unchanged and the image-vs-headline fit math stays stable. (The hero's bottom hand-line and invitation paragraph are *not* decoupled — they have room and benefit from the boost.)
+3. **Shorter hero image on desktop.** `initialH = side` on mobile, `side × 0.5` on desktop (`vw ≥ 768`) — a landscape crop; headline anchors switched from `side/2` to `initialH/2`. Verified the top block clears the top across 1280×800 / 1366×768 / 1536×864 / 1920×1080.
+
+**Consequences.** Desktop body text/UI reads at an appropriate size; mobile untouched. The hero headline keeps its designed size and no longer clips. Re-tuning desktop scale = change the single `1.25` in `globals.css` **and** `use-adaptive-grid.ts` (and the hero `÷1.25` divisor). Because px/vh-based elements (e.g. the schedule slot width, image boxes) do not scale with rem, there can be slight proportion shifts between rem text and px containers — acceptable, but **not browser-verified in this environment**: recommend a desktop pass (1366×768 and a wide monitor) plus a hero-headline fit check.
+
+---
+
+## ADR-0032 — Unified section transitions: shared reveal line, declarative dresscode cascade, pinned-section exit parallax
+
+- **Status:** Accepted
+- **Date:** 2026-06-08
+
+**Context.** The date→location transition was the agreed-good reference; location→schedule and schedule→dresscode looked different, and the dresscode gender switch still made the switch + everything below it vanish permanently (ADR-0031's `<Handle>` removal did not fix it). Three distinct problems:
+
+1. **Switch disappears (real root cause).** Dresscode's `switchReveal` / `captionReveal` / `blacklistReveal` / `photoSprings` were still the **single-shot imperative** form — `useSpring(() => ({opacity:0}))` + `api.start({opacity:1, delay})` inside a `useEffect([revealed])`. This is the exact pattern ADR-0030 proved unreliable in this react-spring 10 / React 19 build, but dresscode's *cascade* was never converted (only its heading was extracted to `SectionHeading`). Clicking the switch calls `setActive` → re-render; in this build the imperative springs reset toward their initial `0` and the one-shot `start` (which only ran in the now-settled `[revealed]` effect) never replays → opacity stuck at 0 forever.
+
+2. **Inconsistent reveal triggers.** Date/location used `IntersectionObserver` threshold `0.7` on a **viewport-height** content div; schedule used a progress-gate (`progress > 0.01`, ADR-0031); dresscode used threshold `0.1` on the whole (taller-than-viewport) section. Threshold-on-content only reproduces a consistent timing when the content is exactly viewport-height — it cannot be ported to the pinned carousel or the tall dresscode.
+
+3. **"Old exits faster than new enters" missing on the pinned schedule.** Date/location achieve it because the exiting panel *flows*: its content scrolls up at 1× **plus** a −12 vh exit-parallax over the 20 vh overlap ⇒ ~1.24× the 1× incoming panel. Schedule is **pinned** for its entire progress, so during the only window where the dresscode (`-mt-[20vh]`) coexists with it — the final 20 vh of scroll — the pinned content contributes **0×**. ADR-0031's `-12 vh over [0.9, 1]` only moved ~−6.7 vh during that overlap, so the incoming dresscode actually moved *faster* — backwards.
+
+**Decision.**
+1. **Shared reveal line — `useRevealOnEnter` + `REVEAL_ROOT_MARGIN`** (`src/hooks/use-reveal-on-enter.ts`). One `IntersectionObserver` with `rootMargin: "0px 0px -20% 0px"`, `threshold: 0`, observing each section's **heading element**, firing `revealed` once when the heading crosses the 80 vh-from-top line. For a viewport-height panel revealed at 70 % visibility the centred heading sits at exactly 80 vh from top — so date/location timing is **preserved** — but expressed as a root margin it now applies identically to the pinned schedule and the tall dresscode (heading position, not content height, sets the trigger). Replaces all four bespoke IO/progress triggers. Reveal springs stay **declarative**, gated on the returned flag.
+2. **Dresscode cascade → declarative.** `switchReveal` / `captionReveal` / `blacklistReveal` are `useSpring({ opacity: revealed ? 1 : 0, delay: revealed ? D : 0 })`; the photos are the **declarative array form** `useSprings(3, [...])`. The delay applies only on the 0→1 transition; once revealed the target stays `1`, so `setActive` re-renders diff to no-change and never reset. Fixes the disappearing switch. (Same delays as before: switch 1500, photos 1800 + i·200, caption 2500, blacklist 2800.)
+3. **Pinned-section exit parallax.** Schedule's inner content rises `EXIT_VH = 24 vh` over **exactly** the dresscode overlap window `[overlapStart, 1]`, where `overlapStart = 1 − OVERLAP_VH / (pinHeightVh − 100)` (= 0.944 for n = 5). 24 vh over the 20 vh overlap ≈ 1.2× the 1× incoming dresscode — the same old-faster ratio the flowing panels get, but sourced entirely from parallax since the pin contributes 0×. The gentle `[0.9, 1]` ramp from ADR-0031 is replaced by this overlap-locked ramp.
+4. **Delay consistency.** Schedule's `headingDelayIn` aligned `300 → 450` to match dresscode / the `SectionHeading` default; the eyebrow already reveals immediately in every section via the shared component.
+
+**Consequences.** All three transitions (date→location, location→schedule, schedule→dresscode) share one reveal line, one reveal mechanism (declarative springs), and the same "old exits faster than new enters" behaviour. The gender switch no longer blanks the lower block. The dresscode→preferences exit (out of scope here) keeps its slow +16 vh lag from ADR-0031. The pinned schedule's exit is necessarily a steeper content lift than the flowing panels (all of its "faster" must come from parallax) — the rate is matched but the feel is firmer; acceptable and the best achievable without un-pinning the carousel. Not browser-verified in this environment — recommend a manual scroll-through of all three seams plus a gender-switch click.
+
+---
+
+## ADR-0031 — Schedule heading timing + exit parallax; dresscode para speed + Handle removal + slower exit
+
+- **Status:** Accepted
+- **Date:** 2026-06-08
+
+**Context.** Five UX issues raised after ADR-0030:
+1. **Schedule heading "not animated"** — The IO on the `stageRef` sticky div fires when the sticky div first enters the viewport from below (~99 vh before pin-start). At normal scroll speed the heading animation completes long before the section pins; the user sees a static heading. Fix: fire `revealed` from `handleProgress` when `progress > 0.01` (once, via `revealedRef`), which triggers exactly at pin-start.
+2. **Dresscode intro paragraph too slow** — `INTRO_REVEAL.letterStagger 35ms` with `tension: 700`. Fix: `letterStagger: 18, tension: 800, friction: 28` — noticeably faster letter cascade.
+3. **Gender switch causes entire lower block to disappear** — `<Handle>` transitions between gallery children. Root cause under investigation; removing Handle is the minimal safe fix. Gallery now renders in a plain `<div>`; `photoSprings` still stagger the initial reveal (unchanged timing); photos swap instantly on gender switch (no cross-fade, no visible regression).
+4. **Schedule→dresscode handoff too slow** — Schedule lacked any exit parallax. Fix: add `exitY = p.to([0, CAROUSEL_END, 1], [0, 0, -12])` on the inner content wrapper (same `-12vh` pattern as date→location and location→schedule). The old `-112vh` whoosh (removed in ADR-0030) is NOT restored; this is a standard subtle parallax only.
+5. **Dresscode exits too fast** — `ep.to([0,0.5,1],[0,0,8])` → `ep.to([0,0.5,1],[0,0,16])`. `pb-[22vh]` → `pb-[30vh]` for headroom.
+
+**Consequences.** Schedule heading reliably animates on pin-entry. Intro paragraph reveals faster. Gender switch no longer causes content to disappear. Schedule→dresscode transition has the standard parallax handoff. Dresscode lingers longer during exit. Not yet verified in a live browser — recommend a manual scroll-through.
+
+---
+
+## ADR-0030 — Shared SectionHeading + declarative reveals; schedule retune
+
+- **Status:** Accepted
+- **Date:** 2026-06-07
+
+**Context.** Recurring complaints the previous two ADRs (0028, 0029) failed to put to rest: location & dresscode headings missing, the schedule heading not animating, and the date-panel elements vanishing (resetting to their `from` state) after being scrolled out of view once. The common thread: every one of these sections revealed its eyebrow label — and the date panel its calendar/note/map — with the **single-shot imperative** form `const [s, api] = useSpring(() => ({…})); … api.start({…})`. That one-time `api.start` is unreliable in this react-spring 10 / React 19 build — it is the exact reason `spring.tsx` and `in-view.tsx` were already converted to declarative springs. A no-op `start` leaves a label at `opacity: 0` (reads as "missing"/"not animated"); when it does fire, the value isn't reliably committed, so a later render reconciles back to the `from` values (the date "disappear"). The earlier fixes only changed the exit-parallax to `.set()` and added IO triggers; they left the imperative reveals in place, so the bug persisted. By contrast, the **preferences** section — never reported as broken — used declarative `SpringTrigger`/`TextEngine` throughout.
+
+**Decision.**
+1. **Extract a shared `SectionHeading`** (`src/views/wedding/section-heading.tsx`): the eyebrow scale-in label + an optional letter-revealed heading, built on **declarative** `useSpring` (diffed each render) and `TextEngine`. Reveal is gated on a boolean — an internal `IntersectionObserver` by default, or a controlled `enabled` prop when the section owns a larger cascade. Reused in every section (date, location, schedule, dresscode, preferences).
+2. **Convert date/location reveals to declarative** — calendar `t`, note, and map fade are `useSpring({ …: revealed ? a : b })` driven by an IO-set `revealed` flag. Exit-parallax `dp`/`lp` keep the continuous `.set()` form (that path was never the problem).
+3. **Retune the schedule** — the timeline container fades in on **inview** (`revealed`, +700 ms after the heading) rather than at `CAROUSEL_START` of a tall pin; scroll now drives only the timeline *progress*. The carousel is re-choreographed so the last item is centred at `p = 1`, so the pin releases exactly when the timeline ends; the `-112vh` exit whoosh / `exitOpacity` are removed in favour of the standard `-mt-[20vh]` overlap handoff. `CAROUSEL_START 0.15 → 0.06`, `EXIT_START` removed, `pinHeightVh n*80+160 → n*80+60`.
+
+**Rule of thumb going forward.** Reveal-once animations use **declarative** springs gated on a state flag (or `TextEngine` / `SpringTrigger`), never a single imperative `api.start()`. Continuous per-frame `api.set()` (scroll parallax) remains fine. Supersedes the reveal mechanics of [[decisions-log#ADR-0029|ADR-0029]] / ADR-0028.
+
+**Consequences.** All section headings reveal reliably and consistently; the date panel no longer blanks on scroll-out; the schedule timeline appears with the heading and exits like any other section. One reusable heading component instead of five bespoke imperative copies. Not yet verified in a live browser (no automation available in this environment) — recommend a manual scroll-through.
+
+---
+
+## ADR-0029 — Schedule height reduction; spring-lag fix; TextEngine enabled gates
+
+- **Status:** Accepted
+- **Date:** 2026-06-06
+
+**Context.** Three UX issues: (1) Schedule section was 800vh (n×120+200) — too much scroll between last carousel item and dresscode. (2) Date/location/dresscode exit-parallax springs (`dp`, `lp`, `ep`) held their last value when the ProgressTrigger loop paused on section exit; stale value ≈1 caused exit parallax to apply during re-entry, clipping content and making sections appear blank on return. (3) Location venue/city/street and dresscode h2/intro (`TextEngine mode="once"`) weren't revealing — the engine's own IO may not fire correctly for below-fold elements.
+
+**Decision.**
+1. **Schedule height** — `n * 120 + 200` → `n * 80 + 160`. Proportions preserved.
+2. **Exit-parallax immediacy** — `.start()` → `.set()` for all three exit-parallax springs. `api.set()` immediately reflects the current scroll progress with no lag or stale state.
+3. **TextEngine `enabled` gate** — restored `enabled={revealed}` on location and dresscode TextEngine headings. The `revealed` state is set by our own reliable IO callbacks (threshold 0.7 / 0.1) that fire while content is in the viewport. TextEngine's IO fires on the next observation frame after `enabled` becomes true while element is already intersecting.
+
+**Consequences.** Schedule section shorter. Date/location/dresscode sections correctly show content on revisit. Location venue/city/street and dresscode heading/intro reveal on first entry.
+
+---
+
+## ADR-0028 — Fix exit-parallax extrapolation; IO-based entry triggers
+
+- **Status:** Accepted
+- **Date:** 2026-06-06
+
+**Context.** `dp.to([0.5, 1], [0, -12])` in date and location panels, and `ep.to([0.5, 1], [0, 8])` in dresscode, extrapolate linearly outside their declared input range (react-spring default). At `dp=0` the result is `+12vh` (dresscode: `−8vh`). The inner content divs are translated off-screen during section entry (progress < 0.5), so fire-once entry animations complete while content is invisible. On scroll-reversal, the same extrapolation re-applies and content visually disappears. The `progress > 0.05` threshold also fires before content is in the visible viewport.
+
+**Decision.**
+1. **Fix exit-parallax ranges** — all three `.to()` calls changed to `[0, 0.5, 1]` with `[0, 0, exitValue]`. Left-edge slope = 0 → zero extrapolation outside [0, 1]; content stays at y=0 during the entire entry phase and only begins its parallax shift once progress > 0.5.
+2. **IO-based entry triggers** — replaced progress-threshold fire-once in all three `handleProgress` callbacks with `useEffect` + `IntersectionObserver`. IO observes the actual content element (not the ProgressTrigger wrapper), fires once at the right threshold (0.7 for date/location 100vh panels; 0.1 for tall dresscode section; 0.01 for schedule sticky stage), disconnects immediately. `handleProgress` now only drives the exit-parallax spring.
+
+**Consequences.** Entry animations fire when the section content is geometrically in the visible viewport. Scroll reversal no longer moves content off-screen. Sections stay in their final state permanently after first reveal.
+
+---
+
+## ADR-0027 — All non-hero animations: inview-once, no reversals
+
+- **Status:** Accepted
+- **Date:** 2026-06-06
+
+**Context.** After removing Lenis Snap (ADR-0026), the `progress > 0.48` entry threshold (designed for the snap-rest position) was too late — continuous scroll means sections pass through before the threshold is crossed, leaving content at its invisible initial state. Additionally, `TextEngine mode="once" enabled={revealed}` had an IntersectionObserver race: if `enabled` changed to `true` after the element had already exited the viewport, IO never re-fired, and text stayed at `letterOut` (opacity 0). Preferences section used `mode="toggle"` (SpringTrigger) and `mode="progress" type="toggle"` (TextEngine) which reverse on backward scroll — content disappearing on scroll-up.
+
+**Decision.**
+1. **Lower thresholds** — date/location/dresscode `handleProgress` fire-once guards changed from `progress > 0.48` to `progress > 0.05` (fires on first frame the section is meaningfully in view).
+2. **Remove `enabled` gates** — all `TextEngine mode="once" enabled={revealed}` simplified to `TextEngine mode="once"`, letting IntersectionObserver handle timing independently. `revealed` state kept where needed for non-TextEngine springs.
+3. **Preferences → mode="once" everywhere** — SpringTrigger `mode="toggle"` → `mode="once"`; TextEngine `mode="progress" type="toggle"` → `mode="once"` (trigger/start/end props removed, IO replaces ScrollTrigger); `mode="forward"` → `mode="once"`.
+
+**Consequences.** All non-hero content animates in on first viewport entry and stays visible permanently. Scroll-back shows full content in all sections.
+
+---
+
+## ADR-0026 — Remove Lenis Snap; schedule titles inview; timeline items persistent opacity
+
+- **Status:** Accepted
+- **Date:** 2026-06-06
+
+**Context.** Section snap-to-top via `LenisSnap` was interfering with natural free-scroll feel. The schedule heading (eyebrow + h2) was driven by scroll progress, meaning the user had to scroll to reveal the title instead of it simply appearing on section entry. Timeline items had a fade-out on exit that created a "window" visibility effect — the user wants items to accumulate as they advance through the carousel.
+
+**Decision.**
+1. **Remove `LenisSnap`** — `lenis/snap` import, `LenisSnap` instance, `snap`/`setSnap` from the scroll store, and all `snap.addElement()` effects removed. Sections free-scroll.
+2. **Schedule titles → inview** — Eyebrow and h2 converted to fire-once entry pattern (same as Dresscode): `progress > 0.02` fires a `useSpring` for the label and sets `revealed`, which enables `TextEngine mode="once"` for the h2. Proxy `headingTriggerRef` and `H2_REVEAL_START` removed.
+3. **Timeline opacity — fade-in only** — Per-item `textOpacity` keyframe reduced to `[0,0,1,1]` over `[0,rs,rs+REVEAL_DUR,1]`. Items stay at `opacity:1` after their reveal point for the remainder of scroll.
+
+**Consequences.** Pages scroll continuously with no snap nudge. Schedule heading appears immediately on section entry. Revealed timeline items stay visible as previous carousel items slide off-screen.
+
+**Qualifies** ADR-0024 (snap removed); timeline section retains its pin/carousel mechanic.
+
+---
+
+## ADR-0024 — Sections as snap-on-entry autoplay elements instead of pinned scroll timelines
+
+- **Status:** Accepted
+- **Date:** 2026-06-03
+
+**Context.** Date, Location, and Dresscode sections were implemented as tall pinned scroll timelines (320–600 vh) where scroll progress drove every animation. This produced long mandatory scroll dwell and prevented normal page flow. Hero remains scroll-pinned (its image-morph sequence is scroll-driven by design).
+
+**Decision.** Convert all non-Hero, non-Schedule sections to natural-height elements (h-dvh or auto) with snap-on-entry autoplay:
+1. **Lenis Snap** (`lenis/snap`, proximity, 0.6 s duration) registered in `ScrollController`. Each section registers its element via `snap.addElement(ref, { align: ['start'] })`. Proximity snap nudges the scroll to the nearest section top when the user pauses near one.
+2. **Entry detection** via `ProgressTrigger start="top bottom" end="bottom top"` on each section. At progress > 0.3 (section is ~30 % into the entry window, coinciding with the 50 % snap threshold) all animations fire as free springs / duration springs — independent of further scroll.
+3. **CalendarFlip** receives a `useSpring` duration tween (0→1 over 2500 ms) instead of scroll progress; the component API is source-agnostic (`SpringValue<number>`).
+4. **Exit parallax** − 12 vh over the exit window (p 0.5→1) gives a subtle faster-exit feel without pinning.
+5. **Schedule exception** — the carousel was redesigned as a fixed horizontal timeline (items at static positions, fire-once spring reveals per item) but the section remains scroll-pinned (the step-through-events pattern requires scroll dwell).
+6. **Section overlaps** reduced from −100 vh (zero-gap pin pattern) to −20 vh, giving a slight peek of the next section without consuming excessive scroll.
+
+**Supersedes/qualifies** ADR-0013 (one-progress pattern), ADR-0015 (parallax handoff — hero stays), ADR-0019 (fast whoosh exit — schedule exit retained), ADR-0021 (dresscode pin — removed).
 
 ---
 

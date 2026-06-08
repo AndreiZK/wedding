@@ -36,8 +36,8 @@ export const dateLocationMock: DateLocationData = {
     day: "16",
     month: "июля",
     year: "2026",
-    note: "сбор гостей в 16:00",
-    iso: "2026-07-16T16:00",
+    note: "сбор гостей в 15:30",
+    iso: "2026-07-16T15:30",
   },
   location: {
     eyebrow: "где?",

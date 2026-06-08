@@ -35,8 +35,7 @@ export interface DresscodeData {
 export const dresscodeMock: DresscodeData = {
   eyebrow: "Дресс-код",
   heading: "Образ вечера",
-  intro:
-    "Классический стиль без лишней строгости — чтобы вам было комфортно и уютно с нами весь вечер.",
+  intro: "Классический стиль без лишней строгости",
   switchLabel: "Выберите образ",
   blacklistCaption: "нежелательные цвета",
   blacklistedColors: [
@@ -51,19 +50,19 @@ export const dresscodeMock: DresscodeData = {
       caption: "Костюм в спокойных тонах. Галстук — по желанию.",
       looks: [
         {
-          src: "/assets/dresscode/male-1.jpg",
+          src: "/assets/dresscode/male-1.jpeg",
           alt: "Образ для него — вариант 1",
           width: 700,
           height: 900,
         },
         {
-          src: "/assets/dresscode/male-2.jpg",
+          src: "/assets/dresscode/male-2.jpeg",
           alt: "Образ для него — вариант 2",
           width: 700,
           height: 900,
         },
         {
-          src: "/assets/dresscode/male-3.jpg",
+          src: "/assets/dresscode/male-3.jpeg",
           alt: "Образ для него — вариант 3",
           width: 700,
           height: 900,

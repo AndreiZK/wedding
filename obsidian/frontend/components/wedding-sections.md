@@ -1,6 +1,6 @@
 ---
 tags: [frontend, feature, wedding]
-updated: 2026-06-01
+updated: 2026-06-08
 ---
 
 # Wedding — Page Sections
@@ -11,6 +11,31 @@ share the warm-dark editorial system: `--w-*` palette, Onest + Unbounded + Cavea
 fonts, the `eyebrow` utility, and seamless `bg-w-ink` flow between them.
 
 **Section order:** Hero → Date & Location → Schedule → Dresscode → Preferences form.
+
+## Shared transition system (date · location · schedule · dresscode)
+
+All four content sections share **one** reveal trigger and **one** exit-handoff so
+every seam reads the same (ADR-0032):
+
+- **Reveal line** — each section observes its **heading** through
+  [[hooks#`useRevealOnEnter`|`useRevealOnEnter`]] with the exported
+  `REVEAL_ROOT_MARGIN = "0px 0px -20% 0px"` (top 80vh of the viewport). `revealed`
+  fires once when the heading crosses the 80vh-from-top line — identical timing in
+  a dvh panel, the pinned carousel, or the tall dresscode. The eyebrow then springs
+  in immediately (shared `SectionHeading`); the heading letters follow at
+  `headingDelayIn={450}` everywhere.
+- **Declarative reveals** — every reveal spring is `useSpring({ …: revealed ? a : b })`
+  (or the declarative `useSprings(n, [...])` array), never a one-shot `api.start()`.
+  They reach *and hold* their end state, so unrelated re-renders (e.g. the dresscode
+  gender switch) never reset them to 0.
+- **Old exits faster than new enters** — the next section overlaps the current one by
+  `-mt-[20vh]` and the **exiting** content gets an upward exit-parallax tuned to ~1.2×
+  the 1× incoming section over that 20vh overlap. Flowing dvh panels add `-12vh` on top
+  of their 1× scroll; the pinned schedule, which contributes 0× while pinned, sources
+  the whole lift from parallax (`24vh` over the overlap window). Driven by `.set()`.
+
+The dresscode→preferences seam is **not** part of this group — dresscode deliberately
+*lags* out (+16vh) so the form rushes up underneath it (ADR-0031).
 
 ## Hero
 
@@ -61,15 +86,19 @@ Client leaf. Key implementation notes:
 - **Backdrop** — a full-bleed `span` (z-0) with an inline `backgroundImage` of two
   stacked radial gradients built from the `--w-*` tokens via `color-mix` (no raw
   hex). Only visible around the small square; covered once the image fills.
-- **Image (square → screen morph)** — `next/image` `fill object-cover` in an
+- **Image (initial crop → screen morph)** — `next/image` `fill object-cover` in an
   `animated.div` positioned with inline `top: calc(50% - CONTENT_OFFSET_VH vh)`,
   `left: 50%`, `transform: translate(-50%,-50%)` — `CONTENT_OFFSET_VH = 4` shifts
-  the composition 4 vh above true centre. `width` and `height` animate independently
-  from `side` (`min(vw,vh) * SQUARE_FRAC 0.6`) to `vw × (vh + 2·offsetPx)` over
-  `c [0,0.85]` (height overshoots by `2×offsetPx` so the bottom edge still lands
-  exactly at `vh` despite the upward shift; the top bleeds above the stage and is
-  clipped by `overflow-hidden`). `borderRadius 28px → 0`. Even corners (no scale
-  distortion) and a true square→viewport-shape morph. **No spacer span** — see
+  the composition 4 vh above true centre. `width` animates from `side`
+  (`min(vw,vh) * SQUARE_FRAC 0.6`) to `vw`; `height` animates from `initialH` to
+  `vh + 2·offsetPx` over `c [0,0.85]`. **`initialH`** is `side` on mobile (the
+  original 1:1 square) but **`side × DESKTOP_HEIGHT_FRAC 0.5`** on desktop
+  (`vw ≥ 768`) — a landscape crop, ~half the height — so the top headline block
+  clears the top of the viewport (a full square cramped/clipped «МЫ» on desktop;
+  fixed 2026-06-08, ADR-0033). Height overshoots by `2×offsetPx` so the bottom edge
+  still lands exactly at `vh`; the top bleeds above the stage and is clipped by
+  `overflow-hidden`. `borderRadius 28px → 0`. The headline anchors use `initialH / 2`
+  (not `side / 2`) so they track the actual image edges. **No spacer span** — see
   headline positioning below.
 - **Headlines** — both headline groups are `position: absolute` with inline `bottom`/
   `top` anchored to the image's true position:
@@ -136,44 +165,47 @@ Files: `src/views/wedding/date-location-section.tsx`,
 
 **Date:** **16 июля 2026** (четверг). **Location:** **River Hall, Гродно**.
 
-**Look & feel** — **two pinned scroll timelines**, one after the other. **Date:** a
-big **`когда?`** label slides out from under the hero (large → eyebrow size); a
-calendar **flips through months — April → July — like turning calendar pages**, and
-on reaching July a **gold ring draws around `16`**; then the gathering-time note
-fades in. **Location:** a **`где?`** label emerges the same way, the venue + city
-**reveal letter by letter**, and a **palette-themed Google map** (gold pin) rises in
-— the stage staying pinned until everything has settled.
+**Look & feel** — **two natural-height (h-dvh) panels**. **Date:** `когда?` label springs in; the
+calendar **flips through months automatically** (time-driven, ~2.5 s) and draws
+the gold ring; then the note fades in. **Location:** `где?` label fires; venue +
+city + street reveal letter by letter; map fades in. Sections overlap by −20 vh so
+the next panel peeks during the exit. Exit: inner content translates −12 vh over
+the exit window (slightly faster than the section itself). See ADR-0024.
 
-### Component — `date-location-section.tsx` (two pins)
+### Component — `date-location-section.tsx` (two snap panels)
 
-Client leaf. The `<section>` holds the real date `<h2 class="sr-only">` + `<time>`.
-**Two** `<ProgressTrigger tag="div">` pins, each feeding **one** `useSpring` value
-(`p`, `p2` — one-progress pattern, [[decisions-log]] ADR-0013).
+Client leaf. The `<section>` holds the real `<h2 class="sr-only">` + `<time>`.
+Each panel is a `<ProgressTrigger tag="div" start="top bottom" end="bottom top"
+className="h-dvh overflow-hidden bg-w-ink">`.
 
-**Date pin** (`h-[320vh]`, stage `aria-hidden` — purely decorative):
+**Entry trigger:** each panel's heading is observed via the shared [[hooks#`useRevealOnEnter`|`useRevealOnEnter`]] (`REVEAL_ROOT_MARGIN`, 80vh-from-top line) — for a dvh panel that's the same point as the old `threshold 0.7` on content, now the project-wide reveal line (ADR-0032). Exit parallax: `dp.to([0,0.5,1],[0,0,-12])`, driven via `dpApi.set()` (immediate, no spring lag — prevents stale value on re-entry). See [[#Shared transition system]], ADR-0028/0029/0032.
 
-| `p` window | What happens |
-|------------|--------------|
-| `0 → 0.22` | `когда?` label: `translateY 24vh→0`, `scale 2.6→1`, fades in |
-| `0.18 → 0.56` | calendar flips April → July (`CalendarFlip`) |
-| `0.58 → 0.70` | gold ring draws on the 16th (earlier + quick) |
-| `0.78 → 0.92` | gathering-time note fades / rises in |
+**Date panel** (`h-dvh`, `aria-hidden` inner div — purely decorative):
 
-**Location pin** (`h-[300vh]`, stage **not** `aria-hidden` — the map + headings are
-real content; only the decorative `где?` label is `aria-hidden`):
+| Event | What happens |
+|-------|--------------|
+| heading crosses reveal line | `когда?` label spring fires: `y 24→0, scale 2.6→1, opacity 0→1` (shared `useRevealOnEnter`) |
+| same frame | `t` spring runs 0→1 over 2500 ms — drives `CalendarFlip` |
+| t 0.08→0.16 | calendar fades in |
+| t 0.18→0.56 | calendar flips April → July |
+| t 0.58→0.70 | gold ring draws on the 16th |
+| delay 2200 ms | gathering-time note fades / rises in |
 
-| `p2` window | What happens |
-|-------------|--------------|
-| `0 → 0.22` | `где?` label: `translateY 24vh→0`, `scale 2.6→1`, fades in |
-| `0.25 → 0.5` | venue `<h3>` + city **reveal letter by letter** (`<TextEngine type="toggle">`, scrubbed by a full-pin **plain-DOM proxy** `trigger`, `center bottom`→`center center`) |
-| `0.52 → 0.78` | `<VenueMap>` fades + scales (`0.94→1`) + rises in, then **holds** to `1` |
+**Location panel** (`h-dvh`, −mt-[20vh]):
 
-Location pin extended to `h-[500vh]` (400vh active). Exit pushed to p2=0.96 so
-the map dwells ~32vh before the whoosh (was 8vh at h-[300vh]/exit 0.92).
+| Event | What happens |
+|-------|--------------|
+| heading crosses reveal line | `где?` label spring fires; `revealed` set (shared `useRevealOnEnter`) |
+| revealed + 500 ms | venue `<h3>` cascades in (`TextEngine mode="once" delayIn={500}`) |
+| revealed + 1000 ms | city `<p>` cascades in |
+| revealed + 1450 ms | street `<p>` cascades in |
+| revealed + 1950 ms | `<VenueMap>` fades + scales in |
 
-The letter reveal reuses the hero's primitive (toggle + proxy trigger, ADR-0015);
-the map appears only after the text and the pin holds until it has settled
-(ADR-0018). See [[components/common]] for `<VenueMap>`.
+**Exit parallax (both panels):** `dp.to([0.5, 1], [0, -12])` → `translateY(-12vh)` on the inner content over the exit window. Progress 0.5 = section top at viewport top (snapped); progress 1 = section top at viewport bottom (fully exited). Gives a subtle >1× exit speed.
+
+**No snap** — snap removed; panels free-scroll (ADR-0026).
+
+**Label pattern (shared):** the eyebrow is the shared `<SectionHeading eyebrow enabled={revealed}>` (declarative, `LABEL_CONFIG` tension 200 friction 28). Calendar `t`, note, and map fade are declarative `useSpring({ …: revealed ? a : b })` gated on the `revealed` flag from `useRevealOnEnter` — they reach *and hold* their end state, fixing the old "elements disappear on scroll-out" bug. Exit-parallax `dp`/`lp` keep continuous `.set()`. See ADR-0030, ADR-0032.
 
 ### Component — `calendar-flip.tsx` (`CalendarFlip`)
 
@@ -213,74 +245,68 @@ set River Hall's exact point.
 
 Files: `src/views/wedding/schedule-section.tsx`, `src/data/mocks/schedule.ts`.
 
-**Look & feel** — a **scroll-pinned horizontal timeline** of the day's events (Сбор
-гостей · Фуршет · Церемония · Ужин · Вечеринка). A heading emerges first (eyebrow
-scales down from 2.6× like "где?"/"когда?"; h2 reveals letter by letter like "River
-Hall"). Then a **continuous horizontal line** with gold diamond bullets connects all
-items — the track slides left so each item centres in turn, a gold fill drawing
-left-to-right along the line as the carousel progresses. Only the centred item's
-text (time, title, note) is visible; all others are transparent. Once the last item
-is revealed the stage **whooshes up** (fast exit, ADR-0019) and the dresscode slides in.
-
-Replaces the earlier vertical toggle-reveal timeline (2026-06-02); corrected from an
-initial card-based carousel (2026-06-02).
+**Look & feel** — a **scroll-pinned horizontal sliding carousel**. As the user
+scrolls through the pinned section, items slide from the first (centred) to the
+last (centred). The heading (shared `SectionHeading`) and the **timeline both
+reveal on inview** as the section enters — the timeline fades in ~700 ms after the
+heading, no extra scrolling required. *Scroll then drives only the timeline
+progress* (track position, gold fill, per-item text). Each item's text fades **in**
+as it reaches the centre and **stays visible** as it leaves. The last item lands
+centred exactly at `p = 1`, so the pin releases the moment the timeline ends (no
+dead scroll) and the section hands off like any other via the dresscode
+`-mt-[20vh]` overlap — no fast exit whoosh. See ADR-0030 (supersedes the
+heading-gate/exit mechanics of ADR-0029, ADR-0024, ADR-0026).
 
 ### Component — `schedule-section.tsx`
 
-Client leaf. All animation is **p-driven** off one `useSpring` value (ADR-0013 +
-ADR-0020). Key implementation details:
+Client leaf. All scroll animation off one `useSpring` value `p`.
 
-- **Pin** — `<ProgressTrigger tag="section" start="top top" end="bottom bottom">` with
-  `style={{ height: \`${pinHeightVh}vh\` }}` (computed as `N*80+200` vh). A
-  `sticky top-0 h-dvh` `animated.div` stage holds the heading + timeline.
+- **Pin** — `<ProgressTrigger tag="section" start="top top" end="bottom bottom">`,
+  `style={{ height: "${pinHeightVh}vh" }}` (`n × 80 + 60` vh; 460 vh for n=5).
+  Plain sticky `div` stage with `overflow-hidden`.
 
-- **Eyebrow** — `animated.p` with `labelY/labelScale/labelOpacity` (scale 2.6→1,
-  translateY 24vh→0, over p 0→0.12). `aria-hidden` — real heading is the h2.
+- **Slot sizing** — `computeSlotWidth(vw)`: mobile `< 768 px` → `78 vw`;
+  desktop → `min(40 vw, 560 px)`. Uses `useWindowWidth()`.
 
-- **H2 letter reveal** — `<TextEngine trigger={headingTriggerRef} mode="progress"
-  type="toggle" start="top top" end="bottom top" className="flex flex-wrap
-  justify-center ...">`. Proxy is offset from the section top by
-  `H2_REVEAL_START × (pinHeightVh − 100)` vh (= 40vh for N=5) so the reveal starts
-  at p=H2_REVEAL_START (after the label has faded in), with height
-  `(CAROUSEL_START − H2_REVEAL_START) × (pinHeightVh − 100)` vh (= 35vh). **Not
-  inside the sticky stage** — must be a direct child of ProgressTrigger.
-  `flex flex-wrap justify-center` is required (TextEngine centring gotcha).
+- **Carousel config** — `buildCarouselConfig(n, vw, slotW)` produces
+  `trackPValues / trackXValues` keyframes. Each item has a `TRAVEL_FRAC = 0.40`
+  lateral travel window; items centre on `vw/2`. Config memoised with
+  `useMemo([n, vw, slotW])`. `pinHeightVh = n × 80 + 60` (460 vh for n=5). See ADR-0029/0030.
 
-- **Track** — `animated.ol` with `translateX` from `p.to(trackPValues, trackXValues)`.
-  `buildCarouselConfig` computes p-stops for item-by-item travel (TRAVEL_FRAC=0.40
-  of each item's range) and the corresponding viewport-centre x-positions per item.
+- **Heading + reveal trigger** — shared [[hooks#`useRevealOnEnter`|`useRevealOnEnter`]] on the heading wrapper (`headingRef`): `revealed` fires when the heading crosses the 80vh-from-top reveal line, same as every other section (replaces ADR-0031's `progress > 0.01` gate). `revealed` drives `<SectionHeading eyebrow heading enabled={revealed} headingDelayIn={450}>` *and* the timeline fade. See [[#Shared transition system]], ADR-0032.
 
-- **Timeline line** — two `absolute` `span`s within the `ol`, both at `top: 0.375rem`
-  (= half the `size-3` bullet height, so the line runs through bullet centres):
-  - Faint base: `left = slotW/2`, `width = (N−1)*slotW` — spans exactly first→last bullet
-  - Gold fill: `left = slotW/2`, `width = viewportW/2 − trackX − slotW/2`
-    — left edge anchored at first bullet; right edge always at the active bullet centre
+- **Timeline reveal (inview)** — `timelineReveal = useSpring({ opacity: revealed ? 1 : 0, delay: revealed ? 700 : 0 })` on the carousel container. Appears with the heading, **not** on scroll.
 
-- **Per-item text opacity** — fades in at `itemRevealStart(i)`, fades out at
-  `itemDwellEnd(i)` (when the next item's travel starts). Only the bullet is always
-  visible; text is wrapped in `animated.div style={{ opacity }}`.
+- **Track** — `<animated.ol style={{ transform: trackX.to(x => 'translateX('+x+'px)') }}>`.
+  Each `<animated.li style={{ width: slotWidthPx, flexShrink: 0 }}>`.
 
-- **Slot width** — `computeSlotWidth(windowWidth)`: mobile → `78 vw`; desktop →
-  `min(40 vw, 560 px)`. `useWindowWidth` + `useMemo` recompute `buildCarouselConfig`.
+- **Timeline lines** — absolute within the `<ol>`, `left: slotW/2`, `width: (n-1)×slotW`.
+  Gold fill width: `p.to(trackPValues, trackXValues.map(tx => vw/2 − tx − slotW/2))` in px.
 
-- **Fast exit** — `exitY/exitOpacity` on the sticky stage (ADR-0019).
+- **Per-item text opacity** — `p.to([0,rs,rs+REVEAL_DUR,1],[0,0,1,1])` where
+  `rs = itemRevealStart(i)`. Items fade **in** when centred and **stay visible**
+  as the carousel advances — no fade-out on exit. This (plus `trackX`/gold fill) is
+  the **only** scroll-driven motion left.
+
+- **Exit parallax (pinned-section variant)** — inner content wrapper translates `exitY = p.to([0, overlapStart, 1], [0, 0, -EXIT_VH])`, `EXIT_VH = 24`, `overlapStart = 1 − OVERLAP_VH/(pinHeightVh − 100)` (`OVERLAP_VH = 20`; ⇒ 0.944 for n=5). The rise is locked to **exactly** the dresscode `-mt-[20vh]` overlap window: 24vh over 20vh of scroll ≈ 1.2× the 1× incoming dresscode. Because the stage is pinned (0× of its own) the entire "faster" must come from parallax — hence the larger 24vh vs the flowing panels' −12vh. This is the "old exits faster than new enters" handoff for a pinned section (ADR-0032, supersedes ADR-0031's `-12 over [0.9,1]` which let the incoming dresscode win). The `-112vh` whoosh is gone (ADR-0030).
+
+- **No snap** — snap removed; section free-scrolls (ADR-0026).
 
 **Choreography constants:**
 | Constant | Value | Meaning |
 |----------|-------|---------|
-| `CAROUSEL_START` | `0.15` | heading done, carousel begins |
-| `EXIT_START` | `0.90` | last item done, exit begins |
-| `H2_REVEAL_START` | `0.08` | h2 letter reveal begins (after label has faded in) |
-| `TRAVEL_FRAC` | `0.40` | fraction of each item's p-range for lateral travel |
-| `REVEAL_DUR` | `0.05` | p-range for text fade in/out at dwell edges |
+| `CAROUSEL_START` | `0.06` | brief lead-in so the heading reads before the track slides |
+| `CAROUSEL_END` | `0.9` | last item centred, then dwells to pin release at `p = 1` |
+| `TRAVEL_FRAC` | `0.40` | fraction of item p-range used for lateral travel |
+| `REVEAL_DUR` | `0.05` | p-range over which each item text fades in |
+| `OVERLAP_VH` | `20` | dresscode overlaps the schedule exit by this (`-mt-[20vh]`) |
+| `EXIT_VH` | `24` | content rise over the overlap → ~1.2× the incoming dresscode |
 
-Pin height formula: `N*120+200` vh (was N*80+200). For N=5: 800vh / 700vh active.
-Per-item dwell: ~63vh (was ~45vh). Proxy heights auto-recalculate from `cfg.pinHeightVh`.
+(`EXIT_START` removed — the carousel spans `[CAROUSEL_START, 1]`, last item centred at `p = 1`.)
 
 **Semantics** — `<section id="schedule" aria-label="Программа дня">`, real `<ol>`/
-`<li>`, `<time>` for each entry's time, `<h3>` for each title. Eyebrow is
-`aria-hidden`; h2 is real content (`TextEngine` renders an accessible hidden copy).
-Bullet markers and line are `aria-hidden`.
+`<li>`, `<time>`, `<h3>`. Eyebrow `aria-hidden`; h2 real content. Bullets + lines
+`aria-hidden`.
 
 ### Mock data — `schedule.ts`
 
@@ -292,83 +318,47 @@ the real running order.
 
 Files: `src/views/wedding/dresscode-section.tsx`, `src/data/mocks/dresscode.ts`.
 
-**Look & feel** — **scroll-pinned reveal** (ADR-0021). A "Дресс-код" label scales
-in large → eyebrow, the h2 "Образ вечера" and intro paragraph reveal letter by letter
-in sequence. Then the **option switch** fades in, followed by a **triptych gallery**
-of looks with per-photo stagger (3 photos pop in one by one). The per-option caption
-appears next, then a row of **"нежелательные цвета"** — red, black, white swatches
-each with a diagonal line. The section exits with the same fast whoosh as all others.
+**Look & feel** — **natural-height section** (no pin). "Дресс-код" label springs in
+on entry, h2 + intro reveal letter by letter, then switch / gallery / caption /
+blacklist cascade in. Reveals on the shared 80vh reveal line; the cascade springs are declarative (survive gender switches). Section exits with a slow **+16 vh lag** so the preferences form rushes up underneath it. See ADR-0024, ADR-0031, ADR-0032.
 
-Replaces the earlier non-pinned viewport-triggered section (2026-06-02).
+Replaced scroll-pinned version (ADR-0021).
 
 ### Component — `dresscode-section.tsx`
 
-Client leaf. All scroll-driven animation off one `useSpring` value `p` (ADR-0013 +
-ADR-0021). Interactive state (`useState` for active option + lightbox) coexists with
-scroll state — they're independent.
+Client leaf. No scroll-driven `p` for stage animation — only entry detection.
 
-- **Pin** — `<ProgressTrigger tag="section" start="top top" end="bottom bottom">`,
-  `h-[700vh]` (600vh active), internal `-mt-[100vh]` (same zero-gap pattern as
-  schedule/location). `bg-w-ink` omitted from ProgressTrigger — parent provides it.
+- **Section** — `<ProgressTrigger tag="section" start="top bottom" end="bottom top"
+  className="relative -mt-[20vh] w-full bg-w-ink">`. Natural height (`py-[12vh]`
+  inner padding instead of sticky stage).
 
-- **Heading sequence** — label `animated.p` (scale 2.6→1, p 0→0.12); h2 `TextEngine
-  mode="progress" type="toggle"` via `headingTriggerRef` proxy (p 0.08→0.18); intro
-  `TextEngine` via `introTriggerRef` proxy (p 0.16→0.26). Both proxies outside sticky
-  stage. `flex flex-wrap justify-center` on TextEngine classNames (centring gotcha).
+- **Entry** — shared [[hooks#`useRevealOnEnter`|`useRevealOnEnter`]] on the content container (`contentRef`, whose top edge = the heading): `revealed` fires when the heading crosses the 80vh-from-top reveal line, same as every other section (replaces the old `threshold 0.1` IO). Eyebrow + h2 are the shared `<SectionHeading eyebrow heading enabled={revealed} headingDelayIn={450}>`; the intro uses `TextEngine mode="once" enabled={revealed}`. Exit parallax: `ep.to([0,0.5,1],[0,0,16])` via `epApi.set()`. See [[#Shared transition system]], ADR-0032.
 
-- **Two plain-DOM proxies:**
-  - `headingTriggerRef`: `top: 48vh, height: 60vh`  (H2_REVEAL_START=0.08, ×600)
-  - `introTriggerRef`: `top: 96vh, height: 60vh`    (INTRO_REVEAL_START=0.16, ×600)
-  - Both use `start="top top" end="bottom top"` in TextEngine.
+- **Reveal cascade is declarative** — `switchReveal` / `captionReveal` / `blacklistReveal` are `useSpring({ opacity: revealed ? 1 : 0, delay: revealed ? D : 0 })` and the photos are the declarative array `useSprings(3, [...])`. Once revealed they hold opacity 1, so clicking the gender switch (`setActive` → re-render) diffs to no-change and **never** blanks them. This — not the `<Handle>` removal — is the actual fix for the "switch + everything below disappears on switch" bug. The previous imperative `api.start()`-in-`useEffect` form reset to 0 on every switch and never replayed. See ADR-0032.
 
-- **Content reveals** (one-way p.to, stay at 1 after reveal):
-  - Switch: p 0.28→0.32
-  - Photos: `photoOpacities[i]` — p `0.33+i×0.05 → 0.33+i×0.05+0.04` (i=0,1,2)
-  - Caption: p 0.52→0.56
-  - Blacklisted colors: p 0.60→0.65
+- **Exit parallax** — `ep.to([0, 0.5, 1], [0, 0, +16])` → `translateY(+16vh)` on inner
+  content over the exit window. Positive offset makes content lag behind the scroll
+  so the dresscode lingers longer than the form section rises in from below (increased
+  from +8vh, ADR-0031). `overflow-hidden` on the ProgressTrigger clips any downward bleed;
+  `pb-[30vh]` (was `pb-[22vh]`) provides headroom for the +16 vh shift.
 
-- **All `p.to()` interpolations** — including final chained/combined values — are computed inside a single `useMemo([p], …)`. `p` is a stable `SpringValue` reference so the memo runs effectively once. The exported values are `labelTransform` (combines `labelY_` + `labelScale_` via `to([…], …)`), `labelOpacity`, `switchOpacity`, `captionOpacity`, `blacklistOpacity`, `photoOpacities`, `stageTransform` (chains `p.to(…).to(…)`), and `stageOpacity`. `labelY_` and `labelScale_` are locals inside the memo — they feed `labelTransform` but are not exported. Without this full memoisation, any re-render (e.g. option-switch → `setActive`) creates new interpolation objects; `animated` elements detach + re-attach and briefly show their initial value (undefined/0) because `p` hasn't emitted a new value to drive the freshly-attached interpolation — causing all scroll-driven elements to flash invisible until the next scroll tick. ⚠️ The same rule applies to chained calls like `derivedInterp.to(fn)` and `to([a, b], fn)` in JSX — even when `a`/`b` are memoized, the **output** interpolation is a new object on every render. Keep ALL derived interpolations inside `useMemo`.
-  The gallery `ul` is inlined in a `useMemo([activeOption, openAt, photoOpacities], …)`
-  so `Handle` cross-fades on option switch. `animated.li` per photo gets its
-  `photoOpacities[i]` opacity. After scroll reveal (all photos at 1), switching
-  options triggers `Handle`'s own fade → new photos appear at full opacity ✓.
+- **Gallery** — `<Handle>` wrapper removed; gallery renders inside a plain `<div>` (ADR-0031). `photoSprings` still stagger the initial reveal (delay 1800+i×200); on gender switch the photos update immediately (no transition delay). Caption and lightbox both follow `activeOption` directly. Images render in **full colour** — `LOOK_FILTER` is just `object-cover` (the old `grayscale/sepia/brightness` desaturation was removed 2026-06-08) and the resting tint overlay is transparent (`bg-transparent`, only a faint `bg-w-ink/20` on hover behind the zoom icon) so the look colours read clearly.
 
-- **Switch** — unchanged structure: `inline-grid grid-cols-2`, `role="group"`,
-  `aria-pressed` buttons, sliding gold underline via `useSpring` + `animated.span`.
+- **Heading** — the eyebrow `useSpring` + `labelTransform`/`labelOpacity` `useMemo`
+  are gone; the shared `SectionHeading` owns the eyebrow + h2 reveal.
 
-- **Blacklisted colors** — `animated.div` with `blacklistOpacity`; each color is a
-  `size-6 rounded-full` swatch (`ring-1 ring-inset ring-w-bone/25`). No SVG lines,
-  no text captions — plain circles only. `aria-label={label}` on each `<span>` for
-  accessibility.
+- **Sequential delays:**
+  - Eyebrow + h2: `SectionHeading enabled={revealed} headingDelayIn={450}`
+  - Intro: `TextEngine mode="once" enabled={revealed} delayIn={1050}` (`letterStagger: 18`, `tension: 800/friction: 28` — faster than the heading; ADR-0031)
+  - Switch: `delay: 1500`
+  - Photos: `delay: 1800+i×200`
+  - Caption: `delay: 2500`
+  - Blacklist: `delay: 2800`
 
-- **`Lightbox`** — unchanged; renders via `createPortal(…, document.body)` so it
-  escapes the `overflow-hidden` sticky stage safely.
+- **Switch, gallery `useMemo`, Lightbox** — unchanged.
+- **No snap** — snap removed; section free-scrolls (ADR-0026).
 
-- **Parallax drift exit** — replaces fast whoosh. `stageY = p.to([0, 0.80, 1], [0, 0, -60])`
-  (0.5× drift, same pattern as hero→content ADR-0015). `stageOpacity = p.to([0, 0.85, 1],
-  [1, 1, 0])`. No `EXIT_START` constant; drift starts at `DRIFT_START = 0.80`.
-- **Switch blur fix** — switch buttons call `.blur()` after click to prevent browser
-  scroll-to-focus from shifting `p` and replaying heading animations.
-
-**Choreography constants:**
-| Constant | Value | Meaning |
-|----------|-------|---------|
-| `PIN_HEIGHT_VH` | `700` | section height; active range = 600vh |
-| `H2_REVEAL_START` | `0.08` | h2 starts after label fades in |
-| `H2_REVEAL_END` | `0.18` | h2 done |
-| `INTRO_REVEAL_START` | `0.16` | intro starts (overlaps h2 tail) |
-| `INTRO_REVEAL_END` | `0.26` | intro done |
-| `CONTENT_START` | `0.28` | switch fades in |
-| `PHOTOS_START` | `0.33` | first photo appears |
-| `PHOTO_STAGGER` | `0.05` | per-photo p offset |
-| `CAPTION_REVEAL` | `0.52` | caption appears |
-| `BLACKLIST_REVEAL` | `0.60` | blacklisted colors appear |
-| `EXIT_START` | `0.88` | fast exit begins |
-
-**Semantics** — `<section id="dresscode" aria-label="Дресс-код">`. Eyebrow
-`aria-hidden`; h2 + intro are real content. Switch `role="group"`, buttons
-`aria-pressed`. Lightbox `role="dialog" aria-modal`. Blacklisted color swatches
-`aria-hidden`; their `<ul>` has `aria-label={data.blacklistCaption}`.
+**Semantics** — `<section id="dresscode" aria-label="Дресс-код">`. Eyebrow `aria-hidden`; h2 + intro real content. Switch `role="group"`, buttons `aria-pressed`. Lightbox `role="dialog" aria-modal`.
 
 ### Mock data — `dresscode.ts`
 
@@ -405,11 +395,11 @@ errors render in `text-w-clay` with `role="alert"`.
   box and shows only against the gold checked fill — no `peer` on a nested node.
 - **Success** — conditional render (not `<Handle>`, to avoid re-running its
   transition on each keystroke); the success panel fades in with `<Spring mode="once">`.
-- **Eyebrow** — `<SpringTrigger mode="toggle" start="top bottom" end="center bottom">` uses its own position as trigger (fires as section just enters viewport).
-- **H2 + intro** — `<TextEngine mode="progress" type="toggle" trigger={sectionRef} start="top bottom" end="center bottom">` with `delayIn={200}` / `{380}`. Using `trigger={sectionRef}` is required: the section sits inside `-mt-[100vh]` in `home.tsx`, placing it in the DOM viewport before it is visually revealed; `mode="once"` (IntersectionObserver) fires too early in that case.
-- **Form fields** — each wrapped in `<SpringTrigger mode="toggle" trigger={sectionRef} start="top bottom" end="center bottom" from={{ opacity:0, y:20 }} to={{ opacity:1, y:0 }}>` with staggered `delayIn` (600 / 700 / 800 / 900 / 1000 ms) — starts after h2 + intro cascade. `trigger={sectionRef}` prevents the infinite rAF loop that `y: 20` would cause when each element uses its own bbox as trigger.
-- **Organizer contact block** — plain `<div>` wrapper (no animation wrapper); note text uses `<TextEngine mode="forward" wordIn/wordOut wordStagger={20}>`, phone uses `<a><TextEngine tag="span" mode="forward" letterIn/letterOut delayIn={280}></a>`. `mode="forward"` fires each element independently as the user scrolls to it — these are at the physical bottom of the section so IntersectionObserver fires correctly (not affected by `-mt-[100vh]` early-fire issue). Using `trigger={sectionRef}` with a long `delayIn` fired the animation before these elements were in view.
-- **Closing line** — `<TextEngine tag="p" mode="forward" wordIn/wordOut wordStagger={80}>`, `font-hand text-2xl italic text-w-gold` (`content.closing`).
+- **Eyebrow + h2** — the shared `<SectionHeading eyebrow heading headingDelayIn={200}>` (uncontrolled — its own IntersectionObserver fires once on entry). Replaces the former `SpringTrigger` eyebrow + standalone `TextEngine` h2. See ADR-0030 (was ADR-0027).
+- **Intro** — `<TextEngine mode="once">` `delayIn={380}`; its own IO handles timing (section is at ~1400 vh DOM position).
+- **Form fields** — each wrapped in `<SpringTrigger mode="once" trigger={sectionRef} start="top bottom" end="center bottom" from={{ opacity:0, y:20 }} to={{ opacity:1, y:0 }}>` with staggered `delayIn` (600 / 700 / 800 / 900 / 1000 ms). `trigger={sectionRef}` prevents the infinite rAF loop that `y: 20` would cause when each element uses its own bbox as trigger.
+- **Organizer contact block** — note text uses `<TextEngine mode="once" wordIn/wordOut wordStagger={20}>`, phone uses `<a><TextEngine tag="span" mode="once" letterIn/letterOut delayIn={280}>`.
+- **Closing line** — `<TextEngine tag="p" mode="once" wordIn/wordOut wordStagger={80}>`, `font-hand text-2xl italic text-w-gold` (`content.closing`).
 - Preferences is the **last section** — no exit animation or pin needed.
 - ⚠️ `useSpringTrigger` only accepts the 9 exact `TriggerPos` string values — no `+=`/`-=` offset syntax; offsets produce `undefined` → NaN → infinite rAF loop every frame.
 
@@ -425,6 +415,39 @@ server-side. Forwards to `CONTACT_ENDPOINT` when set (tagged
 new env var.
 
 ## Shared system
+
+### Section heading — `section-heading.tsx` (`SectionHeading`)
+
+The one heading treatment shared by every section: a gold tracked **eyebrow** that
+scales/rises in (`y 24→0 vh, scale 2.6→1, opacity 0→1`, `LABEL_CONFIG` tension 200
+friction 28) plus an **optional** letter-revealed heading (`TextEngine mode="once"`).
+
+Built entirely on **declarative** primitives — the eyebrow is a `useSpring`
+diffed against a `revealed` boolean each render, the heading a `TextEngine`
+`enabled={revealed}`. This is deliberate: the old per-section eyebrows used the
+**single-shot imperative** `useSpring(() => ({…})).api.start({…})` form, which is
+unreliable in this react-spring build (same reason `spring.tsx`/`in-view.tsx` are
+declarative) — it left some headings stuck at `opacity:0` and let the date panel
+reset to its `from` state on scroll-out. See [[decisions-log]] ADR-0030.
+
+| Prop | Meaning |
+|------|---------|
+| `eyebrow` | small decorative label (always `aria-hidden`) |
+| `heading` / `headingTag` | optional real heading text + level (`h2`/`h3`) |
+| `enabled` | **controlled** reveal — when given, animates as it turns true; lets a section drive a larger cascade off one trigger |
+| `threshold` | IntersectionObserver threshold for the **uncontrolled** internal trigger (default 0.3) |
+| `headingDelayIn` / `headingStagger` / `headingClassName` | heading timing + typography overrides |
+
+Renders a fragment (eyebrow `<p>` + heading) so it drops straight into a section's
+flex column. Used by date (eyebrow only, `enabled`), location (eyebrow only,
+`enabled`), schedule (eyebrow + h2, `enabled`), dresscode (eyebrow + h2,
+`enabled`), preferences (eyebrow + h2, uncontrolled IO).
+
+> [!warning] Reveal-once = declarative, never single `api.start`
+> One-shot reveals must use a declarative spring gated on a state flag (or
+> `TextEngine`/`SpringTrigger`), **not** a single imperative `api.start()` call —
+> it does not reliably commit in this build. Continuous per-frame `api.set()`
+> (scroll parallax) is fine. See ADR-0030.
 
 > [!warning] Inview gotcha — use `Spring` / `TextEngine`, not `<Inview>`
 > `<Inview>` has a pre-existing engine bug (`inViewRef.current = node` should be

@@ -1,6 +1,6 @@
 ---
 tags: [frontend, stable]
-updated: 2026-05-21
+updated: 2026-06-08
 ---
 
 # Catalog — Hooks
@@ -33,7 +33,8 @@ components — don't call them directly unless extending the engine.
 | Hook | File | Role |
 |------|------|------|
 | `useWindowWidth` / `useWindowHeight` / `useWindowSize` | `use-window-size.ts` | SSR-safe window dimensions — all three share **one** debounced (300 ms) `resize` listener via a `useSyncExternalStore` store |
-| `useAdaptiveGrid` | `use-adaptive-grid.ts` | Scales the root `<html>` font-size up while the viewport exceeds `baseWidth` — powers `<AdaptiveGrid>`, see [[components/common]] |
+| `useRevealOnEnter` | `use-reveal-on-enter.ts` | Fires `revealed` (once) when the observed element crosses the **shared reveal line** — an `IntersectionObserver` with the exported `REVEAL_ROOT_MARGIN` (`"0px 0px -20% 0px"`, the top 80vh of the viewport). Every wedding section observes its **heading** through this hook, so all sections reveal at the same viewport position regardless of their height (dvh panel, pinned carousel, tall dresscode). Gate **declarative** reveal springs on the result. See [[components/wedding-sections]], [[decisions-log]] ADR-0032 |
+| `useAdaptiveGrid` | `use-adaptive-grid.ts` | Scales the root `<html>` font-size up while the viewport exceeds `baseWidth` — powers `<AdaptiveGrid>`, see [[components/common]]. Carries the `DESKTOP_BOOST = 1.25` legibility factor (must match the `vw` queries in `globals.css`) so the scale-up stays continuous across 1920px; see [[design-system]] / ADR-0033 |
 | `useSubmitPreferences` | `use-submit-preferences.ts` | Submits the wedding preferences form to `/api/preferences` via `apiFetch`; exposes `{ status, error, submit }`. Keeps network logic out of the form (see [[components/wedding-sections]], [[api-architecture]]) |
 | `useIntro` | `use-intro.ts` | Zustand store with `done` / `setDone` — the `<Preloader>` flips it when its monogram lands, and the corner `SiteLogo` stays hidden until then so the two logos hand off seamlessly (see [[components/common]]) |
 | `useGoogleMaps` | `use-google-maps.ts` | Loads the Google Maps JS API once (singleton script inject) and reports `"no-key" \| "loading" \| "ready" \| "error"`; keyed on `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`. Powers `<VenueMap>` (see [[components/common]], [[decisions-log]] ADR-0017) |

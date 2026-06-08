@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useMemo, useRef } from "react";
-import { animated, to, useSpring } from "@react-spring/web";
-import TextEngine from "spring-text-engine";
+import { animated, useSpring } from "@react-spring/web";
 
 import { ProgressTrigger } from "@/components/animation/springs/progress-trigger";
+import { SectionHeading } from "@/views/wedding/section-heading";
+import { useRevealOnEnter } from "@/hooks/use-reveal-on-enter";
 import { useWindowWidth } from "@/hooks/use-window-size";
 import type { ScheduleData } from "@/data/mocks/schedule";
 
@@ -12,25 +13,17 @@ export interface ScheduleSectionProps {
   data: ScheduleData;
 }
 
-const CAROUSEL_START = 0.15; // heading done, carousel begins
-const EXIT_START = 0.90; // last item done, exit begins
-const H2_REVEAL_START = 0.08; // h2 starts once label has faded in (label runs p 0→0.12)
-const TRAVEL_FRAC = 0.40; // fraction of each item's p-range used for lateral travel
-const REVEAL_DUR = 0.05; // p-range over which each item's text fades in/out
-
-const LETTER_REVEAL = {
-  mode: "progress",
-  type: "toggle",
-  letterOut: { opacity: 0, y: "0.4em" },
-  letterIn: { opacity: 1, y: "0em" },
-  letterConfig: { tension: 700, friction: 34 },
-} as const;
+const CAROUSEL_START = 0.06; // brief lead-in so the heading reads before sliding
+const CAROUSEL_END = 0.9; // last item centred — then a readable dwell to pin release
+const TRAVEL_FRAC = 0.4; // fraction of each item's p-range used for lateral travel
+const REVEAL_DUR = 0.05; // p-range over which each item's text fades in
+const OVERLAP_VH = 20; // dresscode overlaps the schedule exit by this (-mt-[20vh])
+const EXIT_VH = 24; // content rise over the overlap → ~1.2× the incoming dresscode
 
 interface CarouselConfig {
   trackPValues: number[];
   trackXValues: number[];
   itemRevealStart: (i: number) => number;
-  itemDwellEnd: (i: number) => number;
   pinHeightVh: number;
 }
 
@@ -39,37 +32,35 @@ function buildCarouselConfig(
   viewportWidthPx: number,
   slotWidthPx: number,
 ): CarouselConfig {
-  const carouselRange = EXIT_START - CAROUSEL_START;
-  const itemRange = carouselRange / n;
-  const travel = itemRange * TRAVEL_FRAC;
-
   const centerX = (i: number) => viewportWidthPx / 2 - slotWidthPx * (i + 0.5);
 
-  const trackPValues: number[] = [0];
-  const trackXValues: number[] = [centerX(0)];
+  // The carousel slides across [CAROUSEL_START, CAROUSEL_END]: item 0 stays
+  // centred through the lead-in, the last item lands centred at CAROUSEL_END and
+  // then *dwells* (read time, like every other item) until the pin releases at
+  // p = 1 — no dead scroll beyond the pin, no exit whoosh.
+  const span = CAROUSEL_END - CAROUSEL_START;
+  const step = n > 1 ? span / (n - 1) : span; // p-distance between item centres
+  const travel = step * TRAVEL_FRAC; // lateral-travel window per item
+  const centerP = (i: number) => CAROUSEL_START + step * i;
+
+  const trackPValues: number[] = [0, centerP(0)];
+  const trackXValues: number[] = [centerX(0), centerX(0)];
 
   for (let i = 1; i < n; i++) {
-    const travelStart = CAROUSEL_START + i * itemRange;
-    const travelEnd = travelStart + travel;
-    trackPValues.push(travelStart, travelEnd);
+    trackPValues.push(centerP(i) - travel, centerP(i));
     trackXValues.push(centerX(i - 1), centerX(i));
   }
-
-  trackPValues.push(1.0);
+  // Hold the last item centred through its dwell, up to pin release.
+  trackPValues.push(1);
   trackXValues.push(centerX(n - 1));
 
-  const itemRevealStart = (i: number) =>
-    i === 0 ? CAROUSEL_START : CAROUSEL_START + i * itemRange + travel;
-
-  const itemDwellEnd = (i: number) =>
-    i === n - 1 ? EXIT_START : CAROUSEL_START + (i + 1) * itemRange;
+  const itemRevealStart = (i: number) => centerP(i) - travel;
 
   return {
     trackPValues,
     trackXValues,
     itemRevealStart,
-    itemDwellEnd,
-    pinHeightVh: n * 120 + 200,
+    pinHeightVh: n * 80 + 60,
   };
 }
 
@@ -87,15 +78,24 @@ export const ScheduleSection = ({ data }: ScheduleSectionProps) => {
   const slotWidthPx = computeSlotWidth(windowWidth);
   const viewportW = windowWidth || 375;
 
+  const sectionRef = useRef<HTMLElement>(null);
+
   const cfg = useMemo(
     () => buildCarouselConfig(entries.length, viewportW, slotWidthPx),
     [entries.length, viewportW, slotWidthPx],
   );
 
-  // Plain-DOM proxy for the h2 TextEngine.
-  // Offset from section top so "top top" fires at p=H2_REVEAL_START (after label).
-  // Height sized so "bottom top" fires at p=CAROUSEL_START.
-  const headingTriggerRef = useRef<HTMLDivElement>(null);
+  // Reveal on the shared trigger line (heading crosses ~80vh from top) — same
+  // timing as every other section. Drives the heading and the timeline fade.
+  const headingRef = useRef<HTMLDivElement>(null);
+  const revealed = useRevealOnEnter(headingRef);
+
+  // Timeline container fades in shortly after the heading — inview, not scroll.
+  const timelineReveal = useSpring({
+    opacity: revealed ? 1 : 0,
+    delay: revealed ? 700 : 0,
+    config: { tension: 200, friction: 26 },
+  });
 
   const [{ p }, api] = useSpring(() => ({
     p: 0,
@@ -103,41 +103,34 @@ export const ScheduleSection = ({ data }: ScheduleSectionProps) => {
   }));
 
   const handleProgress = useCallback(
-    ({ progress }: { progress: number; interpolatedProgress: number }) => {
+    ({ progress }: { progress: number }) => {
       api.start({ p: progress });
     },
     [api],
   );
 
-  // Label — same large-to-small emergence as "когда?" / "где?" (date-location-section.tsx:57–60).
-  const labelY = p.to([0, 0.12, 1], [24, 0, 0]);
-  const labelScale = p.to([0, 0.12, 1], [2.6, 1, 1]);
-  const labelOpacity = p.to([0, 0.03, 0.12, 1], [0, 1, 1, 1]);
-
-  // Track horizontal position (pixels).
+  // Track horizontal position (pixels) — the only scroll-driven motion left.
   const trackX = p.to(cfg.trackPValues, cfg.trackXValues);
 
-  // Gold fill: left edge at first bullet centre, right edge at active bullet centre.
-  // fill_width = (viewportW/2 − trackX) − slotW/2
+  // Exit parallax — "old exits faster than new enters", matched to date→location.
+  // The stage is *pinned* for the whole progress, so the only window where the
+  // dresscode (−mt-[20vh]) coexists with the schedule is the final overlap
+  // (last 20vh of scroll). During it the pinned content contributes 0× of its
+  // own, so ALL of the "faster" must come from parallax: we rise EXIT_VH over
+  // exactly that overlap window → ~1.2× the 1× incoming dresscode, the same
+  // old-faster ratio the flowing date/location panels get. See ADR-0032.
+  const overlapStart = 1 - OVERLAP_VH / (cfg.pinHeightVh - 100);
+  const exitY = p.to([0, overlapStart, 1], [0, 0, -EXIT_VH]);
+
+  // Gold fill: width = distance from first-bullet centre to active-bullet centre.
   const goldFillWidth = p.to(
     cfg.trackPValues,
     cfg.trackXValues.map((tx) => viewportW / 2 - tx - slotWidthPx / 2),
   );
 
-  // Timeline fades in at CAROUSEL_START so heading phase and scroll-in are clean.
-  const timelineOpacity = p.to(
-    [0, CAROUSEL_START - 0.02, CAROUSEL_START + 0.03, 1],
-    [0, 0, 1, 1],
-  );
-
-  // Fast exit (ADR-0019).
-  const exitY = p.to([0, EXIT_START, 1], [0, 0, -112]);
-  const exitOpacity = p.to([0, EXIT_START + 0.01, 1], [1, 1, 0]);
-
-  const activeScrollRange = cfg.pinHeightVh - 100;
-
   return (
     <ProgressTrigger
+      ref={sectionRef}
       tag="section"
       id="schedule"
       aria-label="Программа дня"
@@ -145,64 +138,29 @@ export const ScheduleSection = ({ data }: ScheduleSectionProps) => {
       end="bottom bottom"
       onChange={handleProgress}
       style={{ height: `${cfg.pinHeightVh}vh` }}
-      // -mt-[100vh]: schedule pin starts immediately when location pin ends —
-      // same zero-gap pattern as the location pin inside DateLocationSection.
-      // bg-w-ink is intentionally omitted here; the parent wrapper provides it.
-      className="relative w-full -mt-[100vh]"
+      className="relative -mt-[20vh] w-full"
     >
-      {/*
-        Proxy for h2 TextEngine. Offset by H2_REVEAL_START so "top top" fires at
-        p=0.08 (label already fading in); sized so "bottom top" fires at CAROUSEL_START.
-      */}
-      <div
-        ref={headingTriggerRef}
-        style={{
-          top: `${H2_REVEAL_START * activeScrollRange}vh`,
-          height: `${(CAROUSEL_START - H2_REVEAL_START) * activeScrollRange}vh`,
-        }}
-        className="pointer-events-none absolute inset-x-0 -z-10"
-        aria-hidden="true"
-      />
-
-      <animated.div
-        style={{
-          transform: exitY.to((v) => `translateY(${v}vh)`),
-          opacity: exitOpacity,
-        }}
-        className="sticky top-0 flex h-dvh w-full flex-col items-center justify-center overflow-hidden will-change-transform"
-      >
-        {/* Section heading */}
-        <div className="flex flex-col items-center gap-3 px-8 text-center">
-          <animated.p
-            style={{
-              opacity: labelOpacity,
-              transform: to(
-                [labelY, labelScale],
-                (y, s) => `translateY(${y}vh) scale(${s})`,
-              ),
-            }}
-            className="eyebrow"
-            aria-hidden="true"
-          >
-            {data.eyebrow}
-          </animated.p>
-
-          {/* flex flex-wrap justify-center — required for TextEngine horizontal centring */}
-          <TextEngine
-            tag="h2"
-            trigger={headingTriggerRef}
-            {...LETTER_REVEAL}
-            start="top top"
-            end="bottom top"
-            className="flex flex-wrap justify-center font-punch text-4xl font-normal text-w-bone md:text-5xl"
-          >
-            {data.heading}
-          </TextEngine>
+      <div className="sticky top-0 flex h-dvh w-full flex-col items-center justify-center overflow-hidden">
+        <animated.div
+          style={{ transform: exitY.to((v) => `translateY(${v}vh)`) }}
+          className="flex w-full flex-col items-center will-change-transform"
+        >
+        {/* Section heading — reveals on the shared trigger line */}
+        <div
+          ref={headingRef}
+          className="flex flex-col items-center gap-3 px-8 text-center"
+        >
+          <SectionHeading
+            eyebrow={data.eyebrow}
+            heading={data.heading}
+            enabled={revealed}
+            headingDelayIn={450}
+          />
         </div>
 
-        {/* Horizontal timeline — hidden until carousel begins so heading phase stays clean */}
+        {/* Horizontal carousel — fades in on inview, then scroll drives progress */}
         <animated.div
-          style={{ opacity: timelineOpacity }}
+          style={{ opacity: timelineReveal.opacity }}
           className="relative mt-[5vh] w-full overflow-hidden"
         >
           <animated.ol
@@ -218,7 +176,7 @@ export const ScheduleSection = ({ data }: ScheduleSectionProps) => {
               className="pointer-events-none absolute top-[0.375rem] h-px bg-w-bone/12"
               aria-hidden="true"
             />
-            {/* Gold fill — grows from first bullet to the active bullet */}
+            {/* Gold fill — grows left to right as carousel advances */}
             <animated.span
               style={{
                 left: slotWidthPx / 2,
@@ -230,23 +188,23 @@ export const ScheduleSection = ({ data }: ScheduleSectionProps) => {
 
             {entries.map((entry, i) => {
               const rs = cfg.itemRevealStart(i);
-              const re = cfg.itemDwellEnd(i);
-              const textOpacity = p.to(
-                [0, rs, rs + REVEAL_DUR, re - REVEAL_DUR, re, 1],
-                [0, 0, 1, 1, 0, 0],
-              );
+              // Item 0 is centred through the lead-in — show it with the timeline
+              // (constant 1, avoiding a malformed p-range with a duplicate/negative
+              // leading breakpoint). Later items fade in as they reach centre.
+              const textOpacity =
+                i === 0
+                  ? 1
+                  : p.to([0, rs, rs + REVEAL_DUR, 1], [0, 0, 1, 1]);
               return (
                 <animated.li
                   key={entry.title}
                   style={{ width: slotWidthPx, flexShrink: 0 }}
                   className="flex flex-col items-center px-6 text-center"
                 >
-                  {/* Circle bullet — sits on top of the line (z-10) */}
                   <span
                     className="relative z-10 block size-3 rounded-full bg-w-gold"
                     aria-hidden="true"
                   />
-                  {/* Content — visible only during this item's dwell */}
                   <animated.div
                     style={{ opacity: textOpacity }}
                     className="mt-5 text-center"
@@ -254,10 +212,10 @@ export const ScheduleSection = ({ data }: ScheduleSectionProps) => {
                     <time className="block font-hand text-3xl italic text-w-gold md:text-4xl">
                       {entry.time}
                     </time>
-                    <h3 className="mt-2 font-sans text-lg font-semibold tracking-tight text-w-bone md:text-xl">
+                    <h3 className="mt-2 font-sans text-sm font-semibold uppercase tracking-wide text-w-bone md:text-base">
                       {entry.title}
                     </h3>
-                    <p className="mt-2 font-body text-sm font-light tracking-wide text-w-muted">
+                    <p className="mt-2 font-body text-xs font-light leading-snug tracking-wide text-w-muted md:text-sm">
                       {entry.note}
                     </p>
                   </animated.div>
@@ -266,7 +224,8 @@ export const ScheduleSection = ({ data }: ScheduleSectionProps) => {
             })}
           </animated.ol>
         </animated.div>
-      </animated.div>
+        </animated.div>
+      </div>
     </ProgressTrigger>
   );
 };

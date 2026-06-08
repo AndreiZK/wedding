@@ -83,7 +83,10 @@ export const VenueMap = ({ lat, lng, zoom = 15, title }: VenueMapProps) => {
       disableDefaultUI: true,
       clickableIcons: false,
       keyboardShortcuts: false,
-      gestureHandling: "cooperative",
+      // "greedy" — a single-finger drag pans and pinch zooms directly (no
+      // two-finger / ctrl-scroll requirement), so the map is fully interactive
+      // on touch devices.
+      gestureHandling: "greedy",
       backgroundColor: palette.ink,
       styles: mapStyles(palette),
     });

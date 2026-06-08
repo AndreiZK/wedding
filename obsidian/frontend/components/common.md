@@ -1,6 +1,6 @@
 ---
 tags: [frontend, stable]
-updated: 2026-05-21
+updated: 2026-06-08
 ---
 
 # Catalog — Common Components
@@ -129,9 +129,13 @@ list), used first by the wedding [[components/wedding-sections|Dresscode section
 | `index` | active image index, or `null` when closed |
 | `onClose` / `onIndexChange` | dismiss / page to another image |
 
-- **Intuitive dismissal** — backdrop click, a top-right `×`, and `Esc` all close.
-- **Paging** — on-screen chevrons + `←`/`→` keys; a `i / n` counter; wraps around.
-  Controls hide when there's only one image.
+- **Intuitive dismissal** — backdrop **tap** (`onClick`, so a swipe doesn't close), a
+  top-right `×`, and `Esc` all close.
+- **Paging** — **swipe** left/right (touch) or the `←`/`→` keys; a `i / n` counter;
+  wraps around. There are **no on-screen chevrons** (removed 2026-06-08) — paging is
+  swipe/keyboard only. The counter hides when there's only one image. Swipe = a
+  mostly-horizontal drag past ~45px (tracked via `onTouchStart`/`onTouchEnd` on the
+  dialog).
 - **Scroll lock + focus** — stops Lenis via the [[smooth-scroll|scroll store]]
   (`useScroll.stop()`) while open, focuses the close button on open, restores
   focus to the opener on close. `role="dialog"` + `aria-modal`.
@@ -151,7 +155,9 @@ JavaScript API**, used by the location pin ([[components/wedding-sections]]).
   tokens** read at runtime (`getComputedStyle`), so the map matches the site (land
   `--w-ink-2`, water `--w-ink`, labels `--w-muted`/`--w-bone`, a few warm-brown road
   shades). The venue marker is a **gold `CIRCLE` symbol** (`--w-gold` fill, `--w-bone`
-  stroke). UI chrome is disabled; `gestureHandling: "cooperative"`.
+  stroke). UI chrome is disabled; `gestureHandling: "greedy"` — a single-finger drag
+  pans and pinch zooms directly, so the map is fully interactive on touch devices (the
+  former `"cooperative"` required two fingers / ctrl-scroll).
 - **Loads once** via [[hooks|`useGoogleMaps`]] (singleton script inject, keyed on
   `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`). The map is created in a `useEffect` once the
   loader is `ready`.

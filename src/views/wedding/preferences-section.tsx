@@ -6,6 +6,7 @@ import TextEngine from "spring-text-engine";
 
 import { Spring } from "@/components/animation/springs/spring";
 import { SpringTrigger } from "@/components/animation/springs/spring-trigger";
+import { SectionHeading } from "@/views/wedding/section-heading";
 import type { PreferencesContent } from "@/data/mocks/preferences";
 import { useSubmitPreferences } from "@/hooks/use-submit-preferences";
 
@@ -54,48 +55,15 @@ export const PreferencesSection = ({ content }: PreferencesSectionProps) => {
       className="relative w-full overflow-hidden bg-w-ink"
     >
       <div className="mx-auto flex max-w-[34rem] flex-col items-center gap-5 px-8 pt-[5.5rem] pb-[5rem] text-center">
-        {/*
-          Eyebrow uses its own position as trigger (standard section-entry pattern).
-          H2 + intro switch to trigger={sectionRef} mode="progress" to avoid the
-          IntersectionObserver early-fire caused by -mt-[100vh] on the wrapper in
-          home.tsx (section is in the DOM viewport before it is visually revealed).
-        */}
-        <SpringTrigger
-          tag="p"
-          mode="toggle"
-          start={TRIGGER_START}
-          end={TRIGGER_END}
-          from={{ scale: 2.6, opacity: 0 }}
-          to={{ scale: 1, opacity: 1 }}
-          config={{ tension: 200, friction: 28 }}
-          className="eyebrow"
-        >
-          {content.eyebrow}
-        </SpringTrigger>
-
-        <TextEngine
-          tag="h2"
-          mode="progress"
-          type="toggle"
-          trigger={sectionRef}
-          start={TRIGGER_START}
-          end={TRIGGER_END}
-          letterOut={{ opacity: 0, y: "0.4em" }}
-          letterIn={{ opacity: 1, y: "0em" }}
-          letterConfig={{ tension: 700, friction: 34 }}
-          delayIn={200}
-          className="flex flex-wrap justify-center font-punch text-4xl font-normal text-w-bone md:text-5xl"
-        >
-          {content.heading}
-        </TextEngine>
+        <SectionHeading
+          eyebrow={content.eyebrow}
+          heading={content.heading}
+          headingDelayIn={200}
+        />
 
         <TextEngine
           tag="p"
-          mode="progress"
-          type="toggle"
-          trigger={sectionRef}
-          start={TRIGGER_START}
-          end={TRIGGER_END}
+          mode="once"
           wordIn={{ y: 0, opacity: 1 }}
           wordOut={{ y: 14, opacity: 0 }}
           wordStagger={26}
@@ -130,7 +98,7 @@ export const PreferencesSection = ({ content }: PreferencesSectionProps) => {
           >
             <SpringTrigger
               tag="div"
-              mode="toggle"
+              mode="once"
               trigger={sectionRef}
               start={TRIGGER_START}
               end={TRIGGER_END}
@@ -157,7 +125,7 @@ export const PreferencesSection = ({ content }: PreferencesSectionProps) => {
 
             <SpringTrigger
               tag="div"
-              mode="toggle"
+              mode="once"
               trigger={sectionRef}
               start={TRIGGER_START}
               end={TRIGGER_END}
@@ -196,7 +164,7 @@ export const PreferencesSection = ({ content }: PreferencesSectionProps) => {
 
             <SpringTrigger
               tag="div"
-              mode="toggle"
+              mode="once"
               trigger={sectionRef}
               start={TRIGGER_START}
               end={TRIGGER_END}
@@ -222,7 +190,7 @@ export const PreferencesSection = ({ content }: PreferencesSectionProps) => {
 
             <SpringTrigger
               tag="div"
-              mode="toggle"
+              mode="once"
               trigger={sectionRef}
               start={TRIGGER_START}
               end={TRIGGER_END}
@@ -254,7 +222,7 @@ export const PreferencesSection = ({ content }: PreferencesSectionProps) => {
 
             <SpringTrigger
               tag="div"
-              mode="toggle"
+              mode="once"
               trigger={sectionRef}
               start={TRIGGER_START}
               end={TRIGGER_END}
@@ -279,12 +247,12 @@ export const PreferencesSection = ({ content }: PreferencesSectionProps) => {
           </form>
         )}
 
-        {/* Organizer contact — mode="forward" so each element fires when the user
+        {/* Organizer contact — mode="once" so each element fires when the user
             actually scrolls to it, not off-screen via the section trigger */}
         <div className="mt-4 flex w-full flex-col items-center gap-3 text-center">
           <TextEngine
             tag="p"
-            mode="forward"
+            mode="once"
             wordIn={{ y: 0, opacity: 1 }}
             wordOut={{ y: 8, opacity: 0 }}
             wordStagger={20}
@@ -299,7 +267,7 @@ export const PreferencesSection = ({ content }: PreferencesSectionProps) => {
           >
             <TextEngine
               tag="span"
-              mode="forward"
+              mode="once"
               letterIn={{ opacity: 1, y: "0em" }}
               letterOut={{ opacity: 0, y: "0.3em" }}
               letterConfig={{ tension: 600, friction: 32 }}
@@ -313,7 +281,7 @@ export const PreferencesSection = ({ content }: PreferencesSectionProps) => {
         {/* Closing line */}
         <TextEngine
           tag="p"
-          mode="forward"
+          mode="once"
           wordIn={{ y: 0, opacity: 1 }}
           wordOut={{ y: 14, opacity: 0 }}
           wordStagger={80}

@@ -51,6 +51,10 @@ const [start, stop] = useScroll(useShallow((s) => [s.start, s.stop]));
 | `isEnableScroll` | `boolean` | is scrolling allowed |
 | `start()` / `stop()` | fn | toggle scroll (e.g. lock when a modal opens) |
 
+## Lenis Snap
+
+Lenis Snap was previously used to hard-snap sections to the viewport top but has been **removed** (see [[decisions-log]] ADR-0026). All sections now free-scroll. The `lenis/snap` import, `LenisSnap` instance, and per-section `snap.addElement()` effects are gone from the codebase.
+
 ## Programmatic scrolling
 
 ```ts

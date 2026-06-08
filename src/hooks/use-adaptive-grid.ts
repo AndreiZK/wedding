@@ -18,6 +18,14 @@ import { useResizeLoop } from "@/hooks/animation/user-resize-loop";
 /** Root font-size (px) the design is measured against. */
 const FONT_BASE = 16;
 
+/**
+ * Desktop legibility boost — must match the 1.25× factor baked into the `vw`
+ * media queries in `globals.css`. Applied to the scale-UP range (> baseWidth)
+ * so the root font-size is continuous across the baseWidth boundary instead of
+ * snapping back to the un-boosted size on very large monitors. See ADR-0033.
+ */
+const DESKTOP_BOOST = 1.25;
+
 export interface UseAdaptiveGridOptions {
   /** Viewport width (px) above which the root font-size scales up. */
   baseWidth: number;
@@ -46,17 +54,16 @@ export const useAdaptiveGrid = ({
 }: UseAdaptiveGridOptions): void => {
   const apply = useCallback(() => {
     const root = document.documentElement;
-    const size = interpolateFontSize(
-      FONT_BASE,
-      baseWidth,
-      window.innerWidth,
-      coef,
-    );
+    const size =
+      interpolateFontSize(FONT_BASE, baseWidth, window.innerWidth, coef) *
+      DESKTOP_BOOST;
+    const floor = FONT_BASE * DESKTOP_BOOST;
 
-    if (size > FONT_BASE) {
+    if (size > floor) {
       root.style.setProperty("font-size", `${size}px`);
     } else {
-      // Below the base width, let the `vw` media queries in globals.css drive.
+      // At/below the base width, let the `vw` media queries in globals.css drive
+      // (they already carry the same DESKTOP_BOOST, so the size is continuous).
       root.style.removeProperty("font-size");
     }
   }, [baseWidth, coef]);
