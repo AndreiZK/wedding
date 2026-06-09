@@ -46,8 +46,8 @@ export const dateLocationMock: DateLocationData = {
     street: "Подольная, 23",
     // Approximate Grodno coordinates — replace lat/lng with River Hall's exact
     // location when confirmed.
-    lat: 53.6884,
-    lng: 23.8258,
+    lat: 53.6715078842098,
+    lng: 23.83334850835446,
     zoom: 15,
     mapTitle: "Карта — River Hall, Гродно",
   },
